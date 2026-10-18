@@ -1,7 +1,8 @@
-import csv, io, json, os, tempfile, unittest, urllib.error
+import csv, http.client, io, json, os, tempfile, threading, unittest, urllib.error
 from unittest import mock
 
 import build_compact, engine, harness, server
+from http.server import ThreadingHTTPServer
 
 
 def raw_release(i, master=None):
@@ -196,11 +197,114 @@ class ShelfLinksTests(unittest.TestCase):
         self.assertEqual([(l['name'], l['count']) for l in out['labels']], [('L1', 4), ('L2', 3)])
 
     def test_release_always_has_links(self):
-        server.SHELF, server.SHELF_IDS, server.LIB = [], set(), []
+        server.SHELF, server.SHELF_IDS, server.WANT_IDS, server.LIB = [], set(), set(), []
         raw = raw_release(1)
         raw.update(images=[], videos=[], tracklist=[])
         with mock.patch.object(server, 'fetch_release', return_value=(raw, {}, True)):
             self.assertEqual(server.release(1)['links'], {'artists': [], 'musicians': [], 'producers': [], 'labels': []})
+
+
+class DecisionTests(InTempData):
+    def setUp(self):
+        super().setUp()
+        self.path = os.path.abspath('decisions.json')
+        patches = [mock.patch.dict(os.environ, {'CD_DECISIONS': self.path, 'CD_DISCOGS_DRY': '1'}),
+                   mock.patch.object(server, 'D', {'releases': {'1': server.compact(raw_release(1))}}, create=True),
+                   mock.patch.object(server, 'SHELF', [], create=True), mock.patch.object(server, 'SHELF_IDS', set(), create=True),
+                   mock.patch.object(server, 'LIB', [], create=True), mock.patch.object(server, 'WANT_IDS', {1}, create=True),
+                   mock.patch.object(server, 'refresh', return_value={}),
+                   mock.patch.object(server, 'fetch_release', return_value=(raw_release(1), {}, True)),
+                   mock.patch.object(server.discogs_write, 'buy', return_value={'folder_id': 1, 'instance_id': 42}),
+                   mock.patch.object(server.discogs_write, 'want', return_value={}),
+                   mock.patch.object(server.discogs_write, 'unbuy'),
+                   mock.patch.object(server.discogs_write, 'unwant')]
+        self.mocks = [p.start() for p in patches]
+        for p in patches: self.addCleanup(p.stop)
+        self.http = ThreadingHTTPServer(('127.0.0.1', 0), server.Handler)
+        self.thread = threading.Thread(target=self.http.serve_forever, daemon=True); self.thread.start()
+        self.addCleanup(self.http.server_close); self.addCleanup(self.http.shutdown)
+
+    def request(self, method, path, body=None, ctype='application/json'):
+        conn = http.client.HTTPConnection('127.0.0.1', self.http.server_port)
+        payload = json.dumps(body) if body is not None else None
+        conn.request(method, path, payload, {'Content-Type': ctype})
+        res = conn.getresponse(); code = res.status; data = json.load(res); conn.close()
+        return code, data
+
+    def test_each_action_saves_fields_and_external_calls(self):
+        for action in ('pass', 'explore', 'buy', 'wishlist'):
+            code, data = self.request('POST', '/api/decision/1',
+                                      {'action': action, 'price': '25', 'tracks': ['One'], 'note': 'shop'})
+            self.assertEqual(code, 200)
+            e = data['decision']
+            self.assertEqual((e['action'], e['price'], e['tracks'], e['note']), (action, '25', ['One'], 'shop'))
+            self.assertEqual((e['artist'], e['title'], e['release_id'], e['undone']), ('Artist', 'Title 1', 1, None))
+            self.assertEqual(e['discogs'], {'folder_id': 1, 'instance_id': 42} if action == 'buy' else {} if action == 'wishlist' else None)
+            self.assertRegex(e['id'], r'^[0-9a-f]{32}$')
+        self.assertEqual(len(server.decisions()), 4)
+        self.mocks[8].assert_called_once_with(1)
+        self.mocks[9].assert_called_once_with(1)
+        self.assertEqual(self.mocks[6].call_count, 2)
+        self.assertEqual(server.decisions(), json.loads(self.read(self.path)))
+
+    def test_discogs_failure_saves_nothing(self):
+        for idx, action in ((8, 'buy'), (9, 'wishlist')):
+            self.mocks[idx].side_effect = server.discogs_write.DiscogsError('denied')
+            code, data = self.request('POST', '/api/decision/1', {'action': action})
+            self.assertEqual((code, data), (502, {'error': 'denied'}))
+            self.assertEqual(server.decisions(), [])
+            self.mocks[idx].side_effect = None
+
+    def test_undo_calls_external_service_and_keeps_history(self):
+        for action, undo_mock in (('buy', self.mocks[10]), ('wishlist', self.mocks[11]), ('pass', None)):
+            _, data = self.request('POST', '/api/decision/1', {'action': action})
+            entry_id = data['decision']['id']
+            code, data = self.request('DELETE', '/api/decision/' + entry_id)
+            self.assertEqual(code, 200)
+            self.assertIsNotNone(data['decision']['undone'])
+            self.assertEqual(self.request('DELETE', '/api/decision/' + entry_id)[0], 404)
+        self.mocks[10].assert_called_once_with(1, 1, 42)
+        self.mocks[11].assert_called_once_with(1)
+        self.assertEqual(len(server.decisions()), 3)
+        self.assertTrue(all(e['undone'] for e in server.decisions()))
+        self.assertEqual(self.request('DELETE', '/api/decision/' + '0' * 32)[0], 404)
+
+    def test_failed_undo_keeps_entry(self):
+        _, data = self.request('POST', '/api/decision/1', {'action': 'buy'})
+        self.mocks[10].side_effect = server.discogs_write.DiscogsError('denied')
+        code, _ = self.request('DELETE', '/api/decision/' + data['decision']['id'])
+        self.assertEqual(code, 502)
+        self.assertIsNone(server.decisions()[0]['undone'])
+
+    def test_refresh_failure_does_not_turn_successful_write_into_error(self):
+        self.mocks[6].side_effect = RuntimeError('reload failed')
+        code, data = self.request('POST', '/api/decision/1', {'action': 'buy'})
+        self.assertEqual(code, 200)
+        self.assertEqual(server.decisions()[0], data['decision'])
+        code, data = self.request('DELETE', '/api/decision/' + data['decision']['id'])
+        self.assertEqual(code, 200)
+        self.assertEqual(server.decisions()[0], data['decision'])
+        self.assertIsNotNone(data['decision']['undone'])
+
+    def test_content_type_validation_and_unknown_action(self):
+        self.assertEqual(self.request('POST', '/api/decision/1', {'action': 'pass'}, 'text/plain')[0], 415)
+        self.assertEqual(self.request('POST', '/api/decision/1', {'action': 'nope'})[0], 400)
+        _, data = self.request('POST', '/api/decision/1', {'action': 'pass'})
+        self.assertEqual(self.request('DELETE', '/api/decision/' + data['decision']['id'], ctype='text/plain')[0], 415)
+        self.assertIsNone(server.decisions()[0]['undone'])
+
+    def test_release_latest_active_and_explore_newest_first(self):
+        _, first = self.request('POST', '/api/decision/1', {'action': 'explore'})
+        _, second = self.request('POST', '/api/decision/1', {'action': 'explore'})
+        _, latest = self.request('POST', '/api/decision/1', {'action': 'pass'})
+        self.assertEqual(self.request('GET', '/api/release/1')[1]['decision']['id'], latest['decision']['id'])
+        self.assertTrue(self.request('GET', '/api/release/1')[1]['wanted'])
+        self.assertEqual([e['id'] for e in self.request('GET', '/api/explore')[1]['entries']],
+                         [second['decision']['id'], first['decision']['id']])
+        self.request('DELETE', '/api/decision/' + latest['decision']['id'])
+        self.assertEqual(self.request('GET', '/api/release/1')[1]['decision']['id'], second['decision']['id'])
+        self.request('DELETE', '/api/decision/' + second['decision']['id'])
+        self.assertEqual([e['id'] for e in self.request('GET', '/api/explore')[1]['entries']], [first['decision']['id']])
 
 
 if __name__ == '__main__':
