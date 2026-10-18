@@ -5,7 +5,7 @@ description: Take a change from idea to live in this project, safely alongside o
 
 # Ship a feature
 
-**Worker started by a lead** (the `Lead:` line in your `TASK.md` is not `none`): skip steps 1, 3 and 4 and the merging in step 9. Read `TASK.md` and start at step 5; report to the lead with messages that begin with your name in brackets, e.g. `[fix-search] READY ...`.
+**Worker started by a lead** (the `Lead:` line in your `TASK.md` is not `none`): skip steps 1, 3 and 4 and the merging in step 9. Read `TASK.md` and start at step 5. If you are a Codex worker, don't commit (your sandbox can't write git metadata): leave the work uncommitted and the lead commits it after review. Report to the lead with messages that begin with your name in brackets, e.g. `[fix-search] READY ...`.
 
 1. **Look around.** Run `git status` and `make status`, and check for other agents with `herdr agent list`.
 2. **Pin down done.** Say in one or two sentences what done looks like and which requirement or decision it serves (`Crate Digger Product Requirements v5.md`, `docs/decisions.md`). If it changes a settled decision, ask the user first.
@@ -15,5 +15,5 @@ description: Take a change from idea to live in this project, safely alongside o
 6. **Check what it touches.** If the change alters the model request (`harness.SYSTEM`, `harness.lists_text`, `styles.DEFINITIONS`), saved answers start over and the eval may need a new round (skill `run-eval`). Write that in `TASK.md` under Contracts.
 7. **Commit** small commits whose message says why, with your agent trailer (`Co-Authored-By: ...`). The pre-commit hook runs the tests.
 8. **Review.** In Claude Code run `/code-review` on the branch; otherwise ask another agent or the user to read the diff. Fix what holds up.
-9. **Hand over.** If you are not the lead, tell the lead the branch is ready and stop. The lead merges into `main`, runs `make deploy` and then `make finish NAME=<short-name>`.
+9. **Hand over.** If you are not the lead, tell the lead the branch is ready and stop. The lead commits any uncommitted Codex work in its worktree (with the Codex trailer) after review, then merges into `main`, runs `make deploy` and then `make finish NAME=<short-name>`.
 10. **Record.** New settled decisions go into `docs/decisions.md`. Tell the user what changed and what to check.

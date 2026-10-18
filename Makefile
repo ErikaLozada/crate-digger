@@ -25,4 +25,4 @@ finish:
 	@bash scripts/finish-task.sh "$(NAME)"
 
 worker:
-	@bash scripts/start-worker.sh "$(NAME)" "$(KIND)" "$(OWNER)"
+	@bash scripts/start-worker.sh "$(NAME)" "$(KIND)" "$(OWNER)" "$(MODEL)" "$(EFFORT)"
