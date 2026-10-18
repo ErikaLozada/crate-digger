@@ -252,6 +252,7 @@ function home(msg) {
       <button role="tab" data-t="q">Artist &amp; Title</button>
     </div>
     <form id="f" autocomplete="off"></form>
+    <div id="explore-link"></div>
     <div id="recent"></div>
   </div>`;
   const draw = () => {
@@ -283,6 +284,14 @@ function home(msg) {
   };
   draw();
   drawRecent();
+  const current = viewGuard();
+  api('/api/explore').then(d => {
+    if (!current() || !d.entries?.length) return;
+    const el = $('#explore-link');
+    if (el) el.innerHTML = `<div class="group"><a class="row" href="#/explore">
+      <div class="grow"><div class="t">Explore Later · ${d.entries.length}</div></div>${I.chev}
+    </a></div>`;
+  }).catch(() => {});
 }
 
 function drawRecent() {
@@ -545,6 +554,30 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const dayOf = iso => { const [, m, d] = iso.slice(0, 10).split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; };
 const JSON_TYPE = {'Content-Type': 'application/json'};
 
+async function explore() {
+  ++viewVersion;
+  chrome('Explore Later', true);
+  app.innerHTML = '<div class="view"><h1 class="large-title">Explore Later</h1><div id="explore-list"></div></div>';
+  const current = viewGuard();
+  try {
+    const d = await api('/api/explore');
+    if (!current()) return;
+    const entries = d.entries || [];
+    $('#explore-list').innerHTML = entries.length ? `<div class="group">${entries.map(e => `
+      <a class="row" href="#/release/${esc(encodeURIComponent(e.release_id))}">
+        <div class="grow">
+          <div class="t wrap"><b>${esc(e.artist)}</b> · ${esc(e.title)}</div>
+          ${e.note ? `<div class="s wrap">${esc(e.note)}</div>` : ''}
+          ${e.tracks?.length ? `<div class="s wrap">${e.tracks.map(esc).join(' · ')}</div>` : ''}
+          <div class="s">${esc(dayOf(e.date))}</div>
+        </div>${I.chev}
+      </a>`).join('')}</div>`
+      : '<div class="group"><div class="row"><div class="grow s wrap">Nothing saved yet. Tap Explore later on a record card.</div></div></div>';
+  } catch (e) {
+    if (current()) $('#explore-list').innerHTML = `<div class="banner">Could not load Explore Later: ${esc(e.message)}</div>`;
+  }
+}
+
 function decisions(id, r, current, {error = '', price = ''} = {}) {
   const el = $('#decide'), d = r.decision;
   const banner = error ? `<div class="banner">${esc(error)}</div>` : '';
@@ -602,6 +635,7 @@ function route() {
   window.scrollTo(0, 0);
   if (view === 'search') return editions(a, decodeURIComponent(b || ''));
   if (view === 'release') return card(a);
+  if (view === 'explore') return explore();
   home();
 }
 window.addEventListener('hashchange', route);
