@@ -1,5 +1,5 @@
 #!/bin/bash
-# Starts a worker agent for a task: its worktree (make task), a herdr pane beside the caller, and the agent in it
+# Starts a worker agent for a task: its worktree (make task), its own herdr tab named after the task, and the agent in it
 # with the permissions the user chose for workers (decisions.md, 2026-10-18).
 #   make worker NAME=fix-search KIND=codex|claude [OWNER=...] [MODEL=...] [EFFORT=low|medium|high]   DRY=1 prints the commands
 # Codex: may write only its worktree, may use the network (local test server, herdr), asks for anything else; it cannot
@@ -34,10 +34,15 @@ if [ "${HERDR_ENV:-}" != 1 ]; then
   echo "Not inside herdr: start it yourself with:  cd $WT && $KIND ${ARGS[*]}"; exit 0
 fi
 if [ -n "$DRY" ]; then
-  echo "herdr pane split ${SPLIT_PANE:+--pane $SPLIT_PANE}$([ -z "$SPLIT_PANE" ] && echo --current) --direction right --cwd $WT --no-focus"
+  if [ -n "$SPLIT_PANE" ]; then echo "herdr pane split --pane $SPLIT_PANE --direction right --cwd $WT --no-focus"
+  else echo "herdr tab create --label $NAME --cwd $WT --no-focus"; fi
   run herdr agent start "$NAME" --kind "$KIND" --pane '<new pane>' -- "${ARGS[@]}"; exit 0
 fi
-PANE="$(herdr pane split ${SPLIT_PANE:+--pane "$SPLIT_PANE"} $([ -z "$SPLIT_PANE" ] && echo --current) --direction right --cwd "$WT" --no-focus | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['pane']['pane_id'])")"
+if [ -n "$SPLIT_PANE" ]; then                               # replay batches share one tab
+  PANE="$(herdr pane split --pane "$SPLIT_PANE" --direction right --cwd "$WT" --no-focus | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['pane']['pane_id'])")"
+else                                                        # a worker gets its own tab, named after the task
+  PANE="$(herdr tab create --label "$NAME" --cwd "$WT" --no-focus | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['root_pane']['pane_id'])")"
+fi
 herdr agent start "$NAME" --kind "$KIND" --pane "$PANE" --timeout 60000 -- "${ARGS[@]}" >/dev/null \
   || echo "Worker $NAME started but is not ready: it may be waiting for an approval in pane $PANE"
 echo "Worker $NAME ($KIND) in pane $PANE, folder $WT. Brief it: herdr agent prompt $NAME \"...\" --wait"
