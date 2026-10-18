@@ -11,6 +11,10 @@ A private web app for deciding on a record in a shop: scan it, see whether you o
 | `make status` | What is live, worktrees and their tasks, uncommitted changes |
 | `make deploy` | Refuses on a dirty tree or failing tests, restarts the service, checks it answers, logs the commit |
 | `make setup` | Once per clone: turns on the git hooks in `.githooks/` |
+| `make task NAME=x OWNER=y` | New branch and sibling worktree for a task, data linked in, own test port, `TASK.md` to fill in |
+| `make finish NAME=x` | Removes a task's worktree and branch once merged |
+
+Skills (in `.agents/skills/`, shared by Claude, Codex and pi): `ship-feature` for any code change, `run-eval` for an evaluation round.
 
 Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.config/crate-digger/env; set +a; python3 harness.py --model primary` (or `fallback`). Runs land in `data/runs/`.
 
@@ -39,9 +43,9 @@ Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.con
 ## Working with other agents
 
 - Before starting: check for other sessions and `git status`. Tell any peer which files you will change.
-- Reaching other agents: Claude sessions with `ListAgents` and `SendMessage`; a Codex session with `codex queue --thread <session id> --message "..."` (find the id in `~/.codex/session_index.jsonl`, and read its replies in its file under `~/.codex/sessions/`). Codex cannot message Claude, so it reports in its own session and in commits.
+- Reaching other agents: Claude sessions with `ListAgents` and `SendMessage`; a Codex session with `python3 scripts/watch-codex.py --send "..."` (run it in the background: it queues the message and prints Codex's reply when its turn ends; `--follow` keeps watching). Codex cannot message Claude, so it answers in its own session and in commits.
 - Every commit names the agent that made it in a trailer, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` or `Co-Authored-By: Codex <noreply@openai.com>`.
-- Parallel work goes in its own worktree and branch, one per task, with `data/` symlinked in and its own `CD_PORT` for a test server. Never use `git stash`.
+- Parallel work goes in its own worktree and branch, one per task (`make task`), with its own test port. Never use `git stash`.
 - One lead owns `main`, merges and `make deploy`. Others do not restart the live service.
 - Shared files have one writer at a time: `data/eval_set.json` (the user), the review files, `data/recommendations.json` (the server).
 - Message peers before touching shared state, and when a branch is ready.
