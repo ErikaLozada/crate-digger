@@ -500,7 +500,7 @@ function route() {
 window.addEventListener('hashchange', route);
 $('#refresh').onclick = async e => {
   const b = e.currentTarget; b.disabled = true; b.style.opacity = .4;
-  home('Refreshing… new records take a few seconds each to download.');
+  home('Refreshing… new records take a couple of seconds each to download.');
   try {
     const d = await api('/api/refresh', {method: 'POST'});
     home(`Refreshed: ${d.shelf} shelf records, ${d.library} library albums` +

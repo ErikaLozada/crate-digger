@@ -33,7 +33,8 @@ def load():
     print('snapshots: %d shelf records, %d library albums' % (len(SHELF), len(LIB)), flush=True)
 
 def fetch_new():
-    """Saves what fetch_discogs.sh saves for shelf and wantlist records that have no details yet.
+    """Saves the Discogs release and master for shelf and wantlist records that have no details yet.
+    No Apple lookup: previews are fetched live, only for the record being inspected (samples()).
     Returns (added ids, failures); a failed record is tried again on the next Refresh."""
     ids = [r['release_id'] for r in csv.DictReader(open('data/collection.csv', encoding='utf-8-sig'))]
     ids += [r[7] for r in list(csv.reader(open('data/wantlist.csv', encoding='utf-8-sig')))[1:]]
@@ -51,16 +52,12 @@ def fetch_new():
             if mid and not os.path.exists('data/masters/%d.json' % mid):
                 time.sleep(1.1)
                 save('data/masters/%d.json' % mid, get('https://api.discogs.com/masters/%d?curr_abbr=AUD' % mid, True, 30))
-            term = '%s %s' % (engine.clean_name(raw.get('artists_sort')), raw['title'])
-            save('data/itunes/%s.json' % i, get('https://itunes.apple.com/search?' + urllib.parse.urlencode(
-                {'term': term, 'entity': 'album', 'country': 'AU', 'limit': 5}), timeout=30))
             save('data/releases/%s.json' % i, raw)          # last, so a record that failed part-way is fetched again
             with open('release_ids.txt', 'a') as f: f.write(i + '\n')
-            with open('itunes_terms.tsv', 'a') as f: f.write('%s\t%s\n' % (i, term))
             added.append(i)
         except Exception as e:
             failed.append('%s (%s)' % (i, e))
-        time.sleep(3.2)                                     # Discogs allows 60 calls a minute, Apple about 20
+        time.sleep(1.1)                                     # Discogs allows 60 calls a minute with a token
     return added, failed
 
 def refresh():
