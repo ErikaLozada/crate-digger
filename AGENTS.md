@@ -38,7 +38,9 @@ Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.con
 
 ## Working with other agents
 
-- Before starting: check for other sessions (`ListAgents` in Claude Code) and `git status`. Tell any peer which files you will change.
+- Before starting: check for other sessions and `git status`. Tell any peer which files you will change.
+- Reaching other agents: Claude sessions with `ListAgents` and `SendMessage`; a Codex session with `codex queue --thread <session id> --message "..."` (find the id in `~/.codex/session_index.jsonl`, and read its replies in its file under `~/.codex/sessions/`). Codex cannot message Claude, so it reports in its own session and in commits.
+- Every commit names the agent that made it in a trailer, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` or `Co-Authored-By: Codex <noreply@openai.com>`.
 - Parallel work goes in its own worktree and branch, one per task, with `data/` symlinked in and its own `CD_PORT` for a test server. Never use `git stash`.
 - One lead owns `main`, merges and `make deploy`. Others do not restart the live service.
 - Shared files have one writer at a time: `data/eval_set.json` (the user), the review files, `data/recommendations.json` (the server).
