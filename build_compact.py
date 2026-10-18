@@ -47,7 +47,7 @@ def build(compact):
     return out
 
 def write(out):
-    json.dump(out, open(D + 'compact.json.tmp', 'w', encoding='utf-8'), ensure_ascii=False)
+    with open(D + 'compact.json.tmp', 'w', encoding='utf-8') as f: json.dump(out, f, ensure_ascii=False)
     os.replace(D + 'compact.json.tmp', D + 'compact.json')
 
 if __name__ == '__main__':

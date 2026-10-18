@@ -39,7 +39,8 @@ def fetch_new():
     ids = [r['release_id'] for r in csv.DictReader(open('data/collection.csv', encoding='utf-8-sig'))]
     ids += [r[7] for r in list(csv.reader(open('data/wantlist.csv', encoding='utf-8-sig')))[1:]]
     new = [i for i in dict.fromkeys(ids) if i and not os.path.exists('data/releases/%s.json' % i)]
-    save = lambda p, d: json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False)
+    def save(p, d):
+        with open(p, 'w', encoding='utf-8') as f: json.dump(d, f, ensure_ascii=False)
     added, failed = [], []
     for i in new:
         try:
@@ -218,7 +219,7 @@ def recommend(rid):
     if x['status'] == 'ok':                                 # an unavailable answer is asked again next time
         with SAVED_LOCK:
             SAVED[key] = dict(x, model=model, at=time.strftime('%Y-%m-%d %H:%M'))
-            json.dump(SAVED, open(SAVED_PATH + '.tmp', 'w', encoding='utf-8'), ensure_ascii=False)
+            with open(SAVED_PATH + '.tmp', 'w', encoding='utf-8') as f: json.dump(SAVED, f, ensure_ascii=False)
             os.replace(SAVED_PATH + '.tmp', SAVED_PATH)
     return x
 

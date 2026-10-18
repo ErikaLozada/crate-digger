@@ -1,0 +1,12 @@
+#!/bin/bash
+# Turned on by `make setup`. Runs for every commit, whichever agent or person makes it.
+
+if git diff --cached --name-only | grep -qx 'data/eval_set.json' && [ "$LABELS_OK" != 1 ]; then
+  echo "pre-commit: data/eval_set.json holds the user's labels and only the user changes them."
+  echo "            If you are the user, commit again with: LABELS_OK=1 git commit ..."
+  exit 1
+fi
+
+if ! out="$(make -s test 2>&1)"; then
+  echo "$out"; echo "pre-commit: tests failed; commit refused."; exit 1
+fi

@@ -2,7 +2,7 @@
 .PHONY: test report status deploy setup
 
 test:
-	python3 -m unittest discover tests
+	python3 -W ignore::ResourceWarning -m unittest discover tests   # the code reads with json.load(open(...)) throughout
 	@if command -v node >/dev/null; then node --test tests/*.test.cjs; else echo "node not found: page tests skipped"; fi
 
 report:
