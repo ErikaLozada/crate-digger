@@ -8,6 +8,7 @@ Base: 2ed31b0
 Reference: 7c7c479 1e57050
 Scope: server.py engine.py tests/test_server.py
 Check: 1216425 12989331 14098396
+Hidden: none (the reference tests call engine.shelf_links, an internal name this brief did not require; graded on the suite, real data and review)
 
 ## Goal
 `GET /api/release/<id>` also returns which records on the shelf share musicians, producers or a label with the inspected record, with the records named, so the card can show "Herbie Hancock (piano) plays on Speak No Evil". The matching already exists in `engine.link()` (Discogs artist IDs, leaders who are sidemen elsewhere, non-musical roles dropped); this task exposes it per person, label and producer. Feature 1 of the shelf-credits work; the page is a separate task (Codex, branch shelf-links-page) built against the contract below.

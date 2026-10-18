@@ -38,7 +38,7 @@ wait_unblocked() {                                           # never act on a wo
 wait_unblocked
 [ "$(field agent_status)" = unknown ] && { echo "RESULT $RUN fail (worker did not start)"; exit 0; }
 start=$SECONDS
-herdr agent prompt "$RUN" "[lead] You are a worker on Crate Digger. Your task is in TASK.md in this folder; read AGENTS.md, then TASK.md, and follow the ship-feature skill's worker path. This is a replay run: do not commit, leave your work in the working tree. Start every message to me with [$RUN]. If the contract seems wrong, stop and ask, starting the line with QUESTION:. When done, end your final message with: [$RUN] READY, plus a two-line summary." --wait --timeout 1800000 >/dev/null || true
+herdr agent prompt "$RUN" "[lead] You are a worker on Crate Digger. Your task is in TASK.md in this folder; read AGENTS.md, then TASK.md, and follow the ship-feature skill's worker path. This is a replay run: do not commit, leave your work in the working tree. Other replay workers may be doing the same task at the same time in their own folders; that is expected, so ignore them and do not coordinate. Start every message to me with [$RUN]. If the contract seems wrong, stop and ask, starting the line with QUESTION:. When done, end your final message with: [$RUN] READY, plus a two-line summary." --wait --timeout 1800000 >/dev/null || true
 PANE="$(field pane_id)"
 wait_unblocked
 took=$((SECONDS - start)); echo "Worker $RUN finished as '$(field agent_status)' after $took s."

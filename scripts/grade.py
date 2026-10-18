@@ -29,7 +29,8 @@ def sh(*cmd, cwd=ROOT, check=True):
 def brief(task):
     text = open(os.path.join(TASKS, task + '.md'), encoding='utf-8').read()
     field = lambda k: (re.search(r'^%s:[ \t]*(.*)$' % k, text, re.M) or [None, ''])[1].split()
-    return {'base': field('Base')[0], 'refs': field('Reference'), 'scope': set(field('Scope')), 'check': field('Check')}
+    return {'base': field('Base')[0], 'refs': field('Reference'), 'scope': set(field('Scope')), 'check': field('Check'),
+            'hidden': (field('Hidden') or ['yes'])[0] != 'none'}
 
 def link_data(folder):
     """Symlink the main copy's untracked data into a checkout, as make task does."""
@@ -46,6 +47,13 @@ def links_output(folder, ids):
     lines = r.stdout.strip().splitlines()
     try: return json.loads(lines[-1])
     except (IndexError, ValueError): return {'error': (r.stderr or r.stdout)[-300:]}
+
+def same_links(gold, out):
+    """Equal, except that records sharing an original year may come in either order: briefs say "oldest first"
+    without a tie rule, so which of two same-year albums fills the last slot is not part of the contract."""
+    shape = lambda d: {rid: {k: [{**e, 'records': [r['year'] for r in e['records']]} for e in es] for k, es in v.items()}
+                       for rid, v in d.items()} if isinstance(d, dict) and 'error' not in d else d
+    return shape(gold) == shape(out)
 
 def golden(task):
     b = brief(task)
@@ -90,7 +98,7 @@ def run(task, folder):
     with tempfile.TemporaryDirectory() as tmp:                # gates 1-2 on a copy with the hidden tests put in
         work = os.path.join(tmp, 'w')
         shutil.copytree(folder, work, symlinks=True, ignore=shutil.ignore_patterns('.git', '__pycache__'))
-        hidden = sorted({f for c in b['refs'] for f in sh('git', 'diff', '--name-only', c + '^', c).stdout.split() if f.startswith('tests/')})
+        hidden = [] if not b['hidden'] else sorted({f for c in b['refs'] for f in sh('git', 'diff', '--name-only', c + '^', c).stdout.split() if f.startswith('tests/')})
         for f in hidden:
             r = sh('git', 'show', '%s:%s' % (b['refs'][-1], f), check=False)
             if r.returncode == 0: open(os.path.join(work, f), 'w', encoding='utf-8').write(r.stdout)
@@ -102,7 +110,7 @@ def run(task, folder):
     gold_path = os.path.join(TASKS, 'golden', task + '.json')
     if b['check']:
         gold = json.load(open(gold_path, encoding='utf-8')) if os.path.exists(gold_path) else None
-        golden_ok = gold is not None and links_output(folder, b['check']) == gold
+        golden_ok = gold is not None and same_links(gold, links_output(folder, b["check"]))
     else:
         golden_ok = None
     outside = sorted(changed_files(folder, b['base']) - b['scope'])
