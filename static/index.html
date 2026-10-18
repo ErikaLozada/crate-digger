@@ -458,7 +458,7 @@ async function loadPicks(id, r) {
     : `<div class="row"><div class="grow s wrap">Nothing close in your collection or library.</div></div>`}`;
   const foot = document.createElement('p');
   foot.className = 'footnote'; foot.style.marginTop = '-18px';
-  foot.textContent = `${x.seconds} s${x.attempts > 1 ? ` · ${x.attempts} attempts` : ''}${x.cost ? ` · US$${x.cost.toFixed(4)}` : ''}`;
+  foot.textContent = x.saved ? `Saved answer from ${x.at} · no new cost` : `${x.seconds} s${x.attempts > 1 ? ` · ${x.attempts} attempts` : ''}${x.cost ? ` · US$${x.cost.toFixed(4)}` : ''}`;
   el.after(foot);
 }
 

@@ -6,7 +6,7 @@ Serves static/index.html and a small JSON API. The Discogs token (discogs_token.
 model keys stay here; the browser never sees them. The inspected release is looked up live on
 Discogs; if that fails, the copy saved by fetch_discogs.sh is used and the card says so.
 """
-import csv, json, os, re, socket, sys, time, urllib.error, urllib.parse, urllib.request
+import csv, hashlib, json, os, re, socket, sys, threading, time, urllib.error, urllib.parse, urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import engine, library, harness, build_compact
 import styles as ST
@@ -186,6 +186,16 @@ def samples(rid):
         out['error'] = str(e)
     return out
 
+# Answers already paid for, keyed by everything the model is sent; a changed shelf, library or prompt misses
+SAVED_PATH = 'data/recommendations.json'
+SAVED = json.load(open(SAVED_PATH, encoding='utf-8')) if os.path.exists(SAVED_PATH) else {}
+SAVED_LOCK = threading.Lock()
+
+def request_key(model, rid, shelf, lib, recs):
+    own = 'S%s' % rid if 'S%s' % rid in shelf else None
+    text = '\n\n'.join([model, harness.SYSTEM, harness.lists_text(shelf, lib, own), harness.record_text(recs[str(rid)])])
+    return hashlib.sha256(text.encode()).hexdigest()
+
 def recommend(rid):
     shelf, want, lib, recs = H
     model = harness.PRIMARY
@@ -195,6 +205,9 @@ def recommend(rid):
         raw, m, live = fetch_release(rid)
         masters = {str(raw.get('master_id')): {'year': m.get('year'), 'styles': m.get('styles', [])}} if m else {}
         recs = dict(recs, **{str(rid): engine.describe(engine.Rec(compact(raw), masters, 'inspected', None))})
+    key = request_key(model, rid, shelf, lib, recs)
+    if key in SAVED:
+        return dict(SAVED[key], saved=True)
     x = harness.run_one(model, rid, shelf, want, lib, recs)
     if x['result']:
         names = {**{k: '%s — %s' % (r['artist'], r['title']) for k, r in shelf.items()},
@@ -202,6 +215,11 @@ def recommend(rid):
         for p in x['result']['picks']:
             p['name'] = names[p['id']]; p['where'] = 'shelf' if p['id'][0] == 'S' else 'library'
             if p['id'][0] == 'L': p['plays'], p['liked'] = lib[p['id']]['plays'], lib[p['id']]['liked']
+    if x['status'] == 'ok':                                 # an unavailable answer is asked again next time
+        with SAVED_LOCK:
+            SAVED[key] = dict(x, model=model, at=time.strftime('%Y-%m-%d %H:%M'))
+            json.dump(SAVED, open(SAVED_PATH + '.tmp', 'w', encoding='utf-8'), ensure_ascii=False)
+            os.replace(SAVED_PATH + '.tmp', SAVED_PATH)
     return x
 
 # ----------------------------------------------------------------------------
