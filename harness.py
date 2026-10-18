@@ -133,10 +133,11 @@ def main():
         x = run_one(model, rid, shelf, want, lib, recs); rows.append(x)
         print('%-9s %-40.40s %-32s %5.1fs %s' % (rid, x['artist'] + ' - ' + x['title'],
               x['result']['style'] if x['result'] else '-', x['seconds'], x['status']))
+    report(rows, expected)
     os.makedirs('data/runs', exist_ok=True)
-    path = 'data/runs/%s-%s.json' % (model, time.strftime('%Y%m%d-%H%M%S'))
+    path = 'data/runs/%s-%s.json' % (model.replace('/', '_'), time.strftime('%Y%m%d-%H%M%S'))
     json.dump({'model': model, 'rows': rows}, open(path, 'w'), ensure_ascii=False, indent=1)
-    report(rows, expected); print('saved', path)
+    print('saved', path)
 
 if __name__ == '__main__':
     main()
