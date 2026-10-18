@@ -41,7 +41,7 @@ def chat(model, messages, schema, timeout=20):
     return call(URL + '/chat/completions', headers(), {
         'model': model, 'messages': messages,
         'response_format': {'type': 'json_schema', 'json_schema': {'name': 'answer', 'strict': True, 'schema': schema}},
-        'provider': {'require_parameters': True, 'data_collection': 'deny'}}, timeout)
+        'provider': {'require_parameters': True, 'data_collection': 'deny'}, 'usage': {'include': True}}, timeout)
 
 if __name__ == '__main__':
     have_key = bool(api_key())

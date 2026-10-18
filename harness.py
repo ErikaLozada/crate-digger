@@ -55,7 +55,9 @@ def ask(model, system, lists, record):
     """One model call -> parsed dict. Raises on timeout, HTTP error or bad JSON."""
     st, d = chat(model, [{'role': 'system', 'content': system}, {'role': 'user', 'content': lists + '\n\n' + record}], SCHEMA, TIMEOUT)
     if st != 200: raise RuntimeError('HTTP %s %s' % (st, d.get('error')))
-    return json.loads(d['choices'][0]['message']['content'])
+    ans = json.loads(d['choices'][0]['message']['content'])
+    ans['_usage'] = d.get('usage') or {}
+    return ans
 
 def clean(ans, valid, self_id):
     """Drop ids that are not in the snapshots, the record itself, repeats, and anything past three."""
@@ -65,16 +67,17 @@ def clean(ans, valid, self_id):
             seen.add(p['id']); picks.append(p)
     picks = picks[:3]
     return {'sentence': ans['sentence'], 'style': ans['style'], 'picks': picks,
-            'dropped': len(ans['picks']) - len(picks)}
+            'dropped': len(ans['picks']) - len(picks), 'usage': ans.get('_usage', {})}
 
 def recommend(model, lists, record, valid, self_id, ask=ask):
-    """One run; two more only if the first style is Other/uncertain. Majority style wins."""
+    """One run; two more only if the first style is Other/uncertain. Majority style wins.
+    Returns (chosen run or None, all runs)."""
     first = clean(ask(model, SYSTEM, lists, record), valid, self_id)
-    if first['style'] != 'Other/uncertain': return first, 1
+    if first['style'] != 'Other/uncertain': return first, [first]
     runs = [first] + [clean(ask(model, SYSTEM, lists, record), valid, self_id) for _ in range(2)]
     top, count = collections.Counter(r['style'] for r in runs).most_common(1)[0]
-    if count < 2: return None, 3
-    return next(r for r in runs if r['style'] == top), 3
+    if count < 2: return None, runs
+    return next(r for r in runs if r['style'] == top), runs
 
 def run_one(model, rid, shelf, want, lib, recs, ask=ask):
     r = recs[str(rid)]
@@ -83,12 +86,17 @@ def run_one(model, rid, shelf, want, lib, recs, ask=ask):
     valid = set(k for k in shelf if k != own) | set(lib)
     t0 = time.time()
     try:
-        rec, attempts = recommend(model, lists, record_text(r), valid, own, ask)
+        rec, runs = recommend(model, lists, record_text(r), valid, own, ask)
         status = 'ok' if rec else 'unavailable: no majority style'
     except Exception as e:
-        rec, attempts, status = None, 1, 'unavailable: %s' % e
-    return {'id': rid, 'artist': r['artist'], 'title': r['title'], 'status': status, 'attempts': attempts,
-            'seconds': round(time.time() - t0, 1), 'result': rec}
+        rec, runs, status = None, [], 'unavailable: %s' % e
+    used = [x.pop('usage') for x in runs]
+    return {'id': rid, 'artist': r['artist'], 'title': r['title'], 'status': status, 'attempts': max(len(runs), 1),
+            'seconds': round(time.time() - t0, 1), 'result': rec,
+            'cost': round(sum(u.get('cost') or 0 for u in used), 5),
+            'tokens': {'prompt': sum(u.get('prompt_tokens') or 0 for u in used),
+                       'completion': sum(u.get('completion_tokens') or 0 for u in used),
+                       'cached': sum((u.get('prompt_tokens_details') or {}).get('cached_tokens') or 0 for u in used)}}
 
 def report(rows, expected):
     n = len(rows)
@@ -102,6 +110,7 @@ def report(rows, expected):
     else: print('style accuracy: no expected_style labels, not scored')
     print('no matches returned %d | median %.1fs | max %.1fs (timeout %ds)' % (
         sum(1 for x in ok if not x['result']['picks']), secs[len(secs) // 2], secs[-1], TIMEOUT))
+    print('cost US$%.4f total, US$%.4f per record' % (sum(x['cost'] for x in rows), sum(x['cost'] for x in rows) / n))
     print('false close matches need your judgement: review the picks in the run file')
 
 def main():

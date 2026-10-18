@@ -4,158 +4,262 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#14110f">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Crate Digger">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Crate Digger</title>
 <style>
 :root {
-  --bg: #f6f3ee; --surface: #ffffff; --ink: #1d1a17; --muted: #6f675f; --line: #e6dfd5;
-  --accent: #c2410c; --accent-ink: #ffffff; --good: #15803d; --good-bg: #e7f5ec;
-  --warn: #a16207; --warn-bg: #fdf4dc; --info: #1d4ed8; --info-bg: #e6edfd; --chip: #efe9e0;
-  --radius: 14px;
+  --bg: #f2f2f7; --cell: #ffffff; --cell-press: #e5e5ea; --label: #000000;
+  --label2: rgba(60, 60, 67, .6); --label3: rgba(60, 60, 67, .3); --sep: rgba(60, 60, 67, .2);
+  --fill: rgba(118, 118, 128, .12); --fill2: rgba(118, 118, 128, .2); --seg-on: #ffffff;
+  --tint: #fa2d48; --tint-soft: rgba(250, 45, 72, .12);
+  --green: #34c759; --orange: #ff9500; --blue: #007aff; --gray: #8e8e93;
+  --bar: rgba(242, 242, 247, .82); --shadow: 0 10px 30px rgba(0, 0, 0, .18);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14110f; --surface: #1f1b18; --ink: #f3eee8; --muted: #a39a90; --line: #332d28;
-    --accent: #f97316; --accent-ink: #1a0d04; --good: #4ade80; --good-bg: #13291b;
-    --warn: #facc15; --warn-bg: #2b2410; --info: #93b4ff; --info-bg: #17213a; --chip: #2a2420;
+    --bg: #000000; --cell: #1c1c1e; --cell-press: #2c2c2e; --label: #ffffff;
+    --label2: rgba(235, 235, 245, .6); --label3: rgba(235, 235, 245, .3); --sep: rgba(84, 84, 88, .55);
+    --fill: rgba(118, 118, 128, .24); --fill2: rgba(118, 118, 128, .32); --seg-on: #636366;
+    --tint: #fc3c5a; --tint-soft: rgba(252, 60, 90, .18);
+    --green: #30d158; --orange: #ff9f0a; --blue: #0a84ff; --gray: #8e8e93;
+    --bar: rgba(0, 0, 0, .78); --shadow: 0 10px 30px rgba(0, 0, 0, .6);
   }
 }
-* { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); }
-body { font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-       padding: env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom)); max-width: 560px; margin: 0 auto; }
-header { display: flex; align-items: center; gap: 10px; padding: 14px 0 10px; }
-header h1 { font-size: 17px; margin: 0; letter-spacing: .02em; flex: 1; }
-header h1 a { color: inherit; text-decoration: none; }
-.logo { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle, var(--accent) 0 18%, var(--ink) 19% 100%); flex: none; }
-button, .btn { font: inherit; border: 0; border-radius: 12px; padding: 13px 16px; background: var(--accent); color: var(--accent-ink);
-  font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-button.ghost, .btn.ghost { background: var(--chip); color: var(--ink); }
-button:disabled { opacity: .5; }
-.iconbtn { background: none; color: var(--muted); padding: 6px 8px; font-weight: 500; font-size: 15px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 0 0 12px; }
-.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--chip); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
-.tabs button { background: none; color: var(--muted); padding: 9px 4px; font-size: 14px; border-radius: 9px; }
-.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
-input[type=text], input[type=search] { width: 100%; font: inherit; font-size: 17px; padding: 13px 14px; border-radius: 12px;
-  border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin-bottom: 12px; }
-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-.stack { display: grid; gap: 10px; }
-.hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
-.note { font-size: 13px; padding: 10px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); margin: 0 0 12px; }
-.err { background: var(--warn-bg); color: var(--warn); }
-.seg { display: flex; gap: 6px; margin: 0 0 12px; }
-.seg button { padding: 7px 14px; font-size: 14px; border-radius: 999px; background: var(--chip); color: var(--ink); font-weight: 500; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-.edition { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px;
-  background: var(--surface); margin-bottom: 8px; cursor: pointer; text-align: left; width: 100%; color: inherit; font-weight: 400;
-  justify-content: flex-start; }
-.edition img, .edition .ph { width: 52px; height: 52px; border-radius: 6px; object-fit: cover; background: var(--chip); flex: none; }
-.edition b { display: block; font-size: 15px; }
-.edition small { color: var(--muted); font-size: 13px; display: block; }
-.badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); }
-.badge.good { background: var(--good-bg); color: var(--good); }
-.badge.info { background: var(--info-bg); color: var(--info); }
-.rec { display: flex; gap: 14px; align-items: flex-start; }
-.rec img, .rec .ph { width: 96px; height: 96px; border-radius: 8px; object-fit: cover; background: var(--chip); flex: none; }
-.rec h2 { font-size: 20px; line-height: 1.2; margin: 0 0 2px; }
-.rec .artist { font-size: 16px; margin: 0 0 6px; }
-.rec .meta { font-size: 13px; color: var(--muted); margin: 0; }
-.style { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.style .fam { font-weight: 600; font-size: 14px; padding: 4px 10px; border-radius: 999px; background: var(--ink); color: var(--bg); }
-.own { display: flex; gap: 12px; align-items: flex-start; }
-.own .dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; flex: none; background: var(--muted); }
-.own.same .dot { background: var(--accent); } .own.other .dot { background: var(--warn); } .own.apple .dot { background: var(--info); }
-.own b { display: block; font-size: 17px; }
-.own small { color: var(--muted); font-size: 14px; }
-h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
-.sentence { font-size: 15px; margin: 0 0 12px; }
-.pick { padding: 10px 0; border-top: 1px solid var(--line); }
-.pick:first-of-type { border-top: 0; padding-top: 0; }
-.pick b { font-size: 15px; display: block; }
-.pick p { margin: 3px 0 4px; font-size: 14px; color: var(--muted); }
-.empty { color: var(--muted); font-size: 15px; margin: 0; }
-.track { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
-.track:first-of-type { border-top: 0; }
-.play { width: 40px; height: 40px; border-radius: 50%; padding: 0; flex: none; font-size: 15px; }
-.track span { flex: 1; font-size: 15px; }
-.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.links .btn { padding: 9px 12px; font-size: 14px; }
-.market { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; text-align: center; }
-.market div { background: var(--bg); border-radius: 10px; padding: 8px 4px; }
-.market b { display: block; font-size: 17px; }
-.market small { font-size: 12px; color: var(--muted); }
-.price b { font-size: 24px; }
-.price small { color: var(--muted); font-size: 13px; display: block; }
-.attrib { font-size: 12px; color: var(--muted); text-align: center; margin: 4px 0 12px; }
-.attrib a { color: inherit; }
-.skel { background: linear-gradient(90deg, var(--chip), var(--line), var(--chip)); background-size: 200% 100%;
-  animation: sh 1.2s infinite; border-radius: 6px; height: 14px; margin: 6px 0; }
-@keyframes sh { to { background-position: -200% 0; } }
-@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
-.loading { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14px; }
-.spin { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: r .8s linear infinite; }
-@keyframes r { to { transform: rotate(360deg); } }
+:root[data-theme="dark"] {
+  --bg: #000000; --cell: #1c1c1e; --cell-press: #2c2c2e; --label: #ffffff;
+  --label2: rgba(235, 235, 245, .6); --label3: rgba(235, 235, 245, .3); --sep: rgba(84, 84, 88, .55);
+  --fill: rgba(118, 118, 128, .24); --fill2: rgba(118, 118, 128, .32); --seg-on: #636366;
+  --tint: #fc3c5a; --tint-soft: rgba(252, 60, 90, .18);
+  --green: #30d158; --orange: #ff9f0a; --blue: #0a84ff; --gray: #8e8e93;
+  --bar: rgba(0, 0, 0, .78); --shadow: 0 10px 30px rgba(0, 0, 0, .6);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--label); }
+body { font: 17px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; letter-spacing: -.01em;
+       -webkit-font-smoothing: antialiased; min-height: 100vh; }
+.page { max-width: 600px; margin: 0 auto; padding: 0 16px calc(32px + env(safe-area-inset-bottom)); }
+a { color: var(--tint); text-decoration: none; }
+svg.i { width: 1em; height: 1em; fill: currentColor; flex: none; }
 .hidden { display: none !important; }
+
+/* navigation bar */
+.bar { position: sticky; top: 0; z-index: 10; padding-top: env(safe-area-inset-top);
+  background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: .5px solid transparent; transition: border-color .2s; }
+.bar.scrolled { border-bottom-color: var(--sep); }
+.bar-in { max-width: 600px; margin: 0 auto; height: 44px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 8px; }
+.bar-title { font-weight: 600; font-size: 17px; opacity: 0; transition: opacity .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
+.bar.scrolled .bar-title { opacity: 1; }
+.bar-btn { background: none; border: 0; color: var(--tint); font: inherit; font-size: 17px; padding: 8px; display: inline-flex; align-items: center; gap: 2px; cursor: pointer; }
+.bar-btn:active { opacity: .4; }
+.bar-btn .i { width: 22px; height: 22px; }
+.bar-right { justify-self: end; }
+.large-title { font-size: 34px; font-weight: 700; letter-spacing: .01em; margin: 4px 0 14px; }
+
+/* segmented control */
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--fill); border-radius: 9px; padding: 2px; margin: 0 0 16px; }
+.seg button { border: 0; background: none; color: var(--label); font: inherit; font-size: 13px; font-weight: 500; padding: 7px 4px;
+  border-radius: 7px; cursor: pointer; transition: background .2s; }
+.seg button[aria-selected="true"] { background: var(--seg-on); font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); }
+
+/* grouped lists */
+.group { background: var(--cell); border-radius: 12px; overflow: hidden; margin: 0 0 24px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; min-height: 44px; position: relative; width: 100%;
+  background: none; border: 0; color: inherit; font: inherit; text-align: left; }
+.row + .row::before { content: ""; position: absolute; top: 0; right: 0; left: var(--inset, 16px); border-top: .5px solid var(--sep); }
+button.row, a.row { cursor: pointer; color: inherit; }
+button.row:active, a.row:active { background: var(--cell-press); }
+.row .grow { flex: 1; min-width: 0; }
+.row .t { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .t.wrap { white-space: normal; }
+.row .s { font-size: 15px; color: var(--label2); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .s.wrap { white-space: normal; }
+.chev { color: var(--label3); width: 9px !important; height: 14px !important; }
+.art { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; background: var(--fill); flex: none; }
+.art.lg { width: 56px; height: 56px; }
+.section-h { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 8px; padding: 0 4px; }
+.section-h h2 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: .01em; }
+.section-h button { background: none; border: 0; color: var(--tint); font: inherit; font-size: 15px; cursor: pointer; }
+.footnote { font-size: 13px; color: var(--label2); padding: 0 16px; margin: -16px 0 24px; }
+
+/* inputs */
+.field { display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 44px; }
+.field + .field { border-top: .5px solid var(--sep); }
+.field label { width: 64px; flex: none; font-size: 17px; }
+.field input { flex: 1; min-width: 0; border: 0; background: none; color: var(--label); font: inherit; font-size: 17px; padding: 11px 0; outline: none; }
+.field input::placeholder { color: var(--label3); }
+.search { display: flex; align-items: center; gap: 6px; background: var(--fill); border-radius: 10px; padding: 0 8px; height: 36px; margin: 0 0 12px; color: var(--label2); }
+.search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--label); font: inherit; font-size: 17px; outline: none; }
+.search input::placeholder { color: var(--label2); }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 50px; border: 0; border-radius: 12px;
+  background: var(--tint); color: #fff; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; margin: 0 0 12px; }
+.btn:active { opacity: .7; }
+.btn.tinted { background: var(--tint-soft); color: var(--tint); }
+.btn .i { width: 20px; height: 20px; }
+.hint { font-size: 13px; color: var(--label2); text-align: center; margin: -4px 0 20px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--fill); color: var(--label2); }
+.pill.green { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.pill.blue { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); }
+.pill.tint { background: var(--tint-soft); color: var(--tint); }
+.banner { font-size: 15px; background: color-mix(in srgb, var(--orange) 16%, transparent); color: var(--label); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; }
+
+/* record header */
+.hero { text-align: center; padding: 8px 0 20px; }
+.hero img, .hero .ph { width: min(260px, 70vw); aspect-ratio: 1; border-radius: 10px; object-fit: cover; box-shadow: var(--shadow); background: var(--fill); display: block; margin: 0 auto 18px; }
+.hero h1 { font-size: 22px; font-weight: 700; margin: 0 0 2px; letter-spacing: .005em; }
+.hero .artist { font-size: 20px; color: var(--tint); margin: 0 0 6px; }
+.hero .meta { font-size: 13px; color: var(--label2); margin: 0; text-transform: uppercase; letter-spacing: .02em; font-weight: 500; }
+.hero .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+
+/* status icons */
+.ico { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; color: #fff; flex: none; }
+.ico .i { width: 18px; height: 18px; }
+.ico.tint { background: var(--tint); } .ico.orange { background: var(--orange); } .ico.blue { background: var(--blue); } .ico.gray { background: var(--gray); } .ico.green { background: var(--green); }
+
+/* tracks */
+.num { width: 22px; text-align: center; color: var(--label2); font-size: 15px; font-variant-numeric: tabular-nums; flex: none; }
+.play { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--fill); color: var(--tint); display: grid; place-items: center; cursor: pointer; flex: none; }
+.play .i { width: 14px; height: 14px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 0 0 4px; margin: -12px 0 24px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; background: var(--cell); color: var(--tint); font-size: 15px; font-weight: 600; border-radius: 999px; padding: 8px 14px; }
+.chip .i { width: 15px; height: 15px; }
+
+/* price */
+.price { padding: 14px 16px 4px; }
+.price b { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.price small { display: block; font-size: 13px; color: var(--label2); margin-top: 2px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 0 14px; }
+.stats div { text-align: center; }
+.stats div + div { border-left: .5px solid var(--sep); }
+.stats b { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stats small { font-size: 12px; color: var(--label2); }
+.sentence { font-size: 15px; color: var(--label2); padding: 12px 16px; border-bottom: .5px solid var(--sep); }
+.attrib { font-size: 12px; color: var(--label2); text-align: center; margin: 0 0 8px; }
+
+/* loading */
+.skel { background: var(--fill); border-radius: 5px; height: 12px; margin: 5px 0; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
+.spinner { width: 20px; height: 20px; flex: none; animation: spin 1s steps(8) infinite; color: var(--label2); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .skel, .spinner { animation: none; } }
+.view { animation: in .25s ease-out; }
+@keyframes in { from { opacity: 0; transform: translateY(6px); } }
 </style>
 </head>
 <body>
-<header>
-  <div class="logo" aria-hidden="true"></div>
-  <h1><a href="#/">Crate Digger</a></h1>
-  <button class="iconbtn" id="refresh" title="Re-import your Discogs collection and Apple Music library">Refresh</button>
-</header>
-<main id="app"></main>
+<nav class="bar" id="bar">
+  <div class="bar-in">
+    <div><button class="bar-btn hidden" id="back"><svg class="i" viewBox="0 0 24 24"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Search</button></div>
+    <div class="bar-title" id="bartitle">Crate Digger</div>
+    <div class="bar-right"><button class="bar-btn" id="refresh" aria-label="Re-import collection and library"><svg class="i" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+  </div>
+</nav>
+<main class="page" id="app"></main>
 
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const app = $('#app');
+const app = $('#app'), bar = $('#bar');
 const api = async (path, opts) => { const r = await fetch(path, opts); const d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); return d; };
-let tab = 'barcode';
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-// ---------------------------------------------------------------- identify
-function identify(msg) {
-  app.innerHTML = `
-    ${msg ? `<p class="note">${esc(msg)}</p>` : ''}
-    <div class="tabs" role="tablist">
+const I = {
+  chev: '<svg class="i chev" viewBox="0 0 9 14"><path d="M1.5 1.5 7 7l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  camera: '<svg class="i" viewBox="0 0 24 24"><path d="M9 4h6l1.6 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.4L9 4Zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><path d="M10.5 3a7.5 7.5 0 0 1 5.96 12.05l4.25 4.24-1.42 1.42-4.24-4.25A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>',
+  play: '<svg class="i" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5Z"/></svg>',
+  pause: '<svg class="i" viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>',
+  check: '<svg class="i" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  stack: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="7" width="14" height="14" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V17" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  note: '<svg class="i" viewBox="0 0 24 24"><path d="M19 3v12.5a3.5 3.5 0 1 1-2-3.16V7.4L9 9.1v8.4a3.5 3.5 0 1 1-2-3.16V5.5L19 3Z"/></svg>',
+  disc: '<svg class="i" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg>',
+  minus: '<svg class="i" viewBox="0 0 24 24"><rect x="5" y="10.8" width="14" height="2.4" rx="1.2"/></svg>',
+  ext: '<svg class="i" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  spinner: '<svg class="spinner" viewBox="0 0 24 24">' + Array.from({length: 8}, (_, i) =>
+    `<rect x="11" y="2" width="2" height="6" rx="1" fill="currentColor" opacity="${(i + 1) / 8}" transform="rotate(${i * 45} 12 12)"/>`).join('') + '</svg>',
+};
+
+// ---------------------------------------------------------------- recent records (this phone only)
+const RECENT = 'cd.recent';
+const recent = () => { try { return JSON.parse(localStorage.getItem(RECENT)) || []; } catch (e) { return []; } };
+const remember = r => {
+  const item = {id: r.id, artist: r.artist, title: r.title, year: r.year, format: r.format, image: r.image};
+  try { localStorage.setItem(RECENT, JSON.stringify([item, ...recent().filter(x => x.id !== r.id)].slice(0, 5))); } catch (e) {}
+};
+
+// ---------------------------------------------------------------- chrome
+function chrome(title, back) {
+  $('#bartitle').textContent = title;
+  $('#back').classList.toggle('hidden', !back);
+  $('#refresh').classList.toggle('hidden', back);
+  onScroll();
+}
+function onScroll() { bar.classList.toggle('scrolled', window.scrollY > 30); }
+window.addEventListener('scroll', onScroll, {passive: true});
+$('#back').onclick = () => history.length > 1 ? history.back() : (location.hash = '#/');
+
+// ---------------------------------------------------------------- home
+let tab = 'barcode';
+function home(msg) {
+  chrome('Crate Digger', false);
+  app.innerHTML = `<div class="view">
+    <h1 class="large-title">Crate Digger</h1>
+    ${msg ? `<div class="banner">${esc(msg)}</div>` : ''}
+    <div class="seg" role="tablist">
       <button role="tab" data-t="barcode">Barcode</button>
-      <button role="tab" data-t="catno">Cat. no.</button>
-      <button role="tab" data-t="q">Artist &amp; title</button>
+      <button role="tab" data-t="catno">Cat. No.</button>
+      <button role="tab" data-t="q">Artist &amp; Title</button>
     </div>
-    <form class="card" id="f" autocomplete="off"></form>`;
+    <form id="f" autocomplete="off"></form>
+    <div id="recent"></div>
+  </div>`;
   const draw = () => {
-    app.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === tab));
+    app.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === tab));
     const f = $('#f');
     if (tab === 'barcode') f.innerHTML = `
-      <div class="stack">
-        <label class="btn" for="photo">Photograph the barcode</label>
-        <input id="photo" type="file" accept="image/*" capture="environment" class="hidden">
-      </div>
+      <label class="btn" for="photo">${I.camera}Scan Barcode</label>
+      <input id="photo" type="file" accept="image/*" capture="environment" class="hidden">
       <p class="hint" id="scanmsg">Fill the frame with the barcode, held flat.</p>
-      <label for="v" style="margin-top:14px">Or type the digits</label>
-      <input id="v" type="text" inputmode="numeric" placeholder="e.g. 614427901217">
-      <button type="submit" class="ghost" style="width:100%">Search</button>`;
+      <div class="search">${I.search}<input id="v" type="search" inputmode="numeric" enterkeyhint="search" placeholder="Or type the barcode digits"></div>`;
     else if (tab === 'catno') f.innerHTML = `
-      <label for="v">Catalogue number (spine or label)</label>
-      <input id="v" type="text" autocapitalize="characters" placeholder="e.g. BEWITH020LP">
-      <button type="submit" style="width:100%">Search</button>`;
+      <div class="search">${I.search}<input id="v" type="search" autocapitalize="characters" enterkeyhint="search" placeholder="Catalogue number, e.g. BEWITH020LP"></div>
+      <button class="btn" type="submit">Search</button>`;
     else f.innerHTML = `
-      <label for="a">Artist</label><input id="a" type="text" placeholder="e.g. Ahmad Jamal">
-      <label for="v">Album title</label><input id="v" type="text" placeholder="e.g. The Awakening">
-      <button type="submit" style="width:100%">Search</button>`;
+      <div class="group" style="margin-bottom:12px">
+        <div class="field"><label for="a">Artist</label><input id="a" type="text" enterkeyhint="next" placeholder="Ahmad Jamal"></div>
+        <div class="field"><label for="v">Album</label><input id="v" type="text" enterkeyhint="search" placeholder="The Awakening"></div>
+      </div>
+      <button class="btn" type="submit">Search</button>`;
     const photo = $('#photo'); if (photo) photo.onchange = () => decodePhoto(photo.files[0]);
   };
-  app.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; draw(); });
-  app.onsubmit = e => {
+  app.querySelectorAll('.seg button').forEach(b => b.onclick = () => { tab = b.dataset.t; draw(); });
+  $('#f').onsubmit = e => {
     e.preventDefault();
     const v = $('#v').value.trim(), a = $('#a') ? $('#a').value.trim() : '';
     const text = tab === 'q' ? [a, v].filter(Boolean).join(' ') : v;
     if (text) location.hash = `#/search/${tab}/${encodeURIComponent(text)}`;
   };
   draw();
+  drawRecent();
+}
+
+function drawRecent() {
+  const list = recent(), el = $('#recent');
+  el.innerHTML = `
+    <div class="section-h" style="margin-top:12px"><h2>Recently Viewed</h2>${list.length ? '<button id="clear">Clear</button>' : ''}</div>
+    ${list.length ? `<div class="group" style="--inset:76px">${list.map(r => `
+      <a class="row" href="#/release/${r.id}">
+        ${r.image ? `<img class="art" src="${esc(r.image)}" alt="">` : `<div class="art"></div>`}
+        <div class="grow"><div class="t">${esc(r.title)}</div><div class="s">${esc([r.artist, r.year].filter(Boolean).join(' · '))}</div></div>
+        ${I.chev}
+      </a>`).join('')}</div>`
+    : `<div class="group"><div class="row"><div class="grow s" style="color:var(--label2);font-size:15px">Records you look up will appear here.</div></div></div>`}`;
+  const c = $('#clear'); if (c) c.onclick = () => { try { localStorage.removeItem(RECENT); } catch (e) {} drawRecent(); };
 }
 
 async function decodePhoto(file) {
@@ -167,148 +271,161 @@ async function decodePhoto(file) {
     const res = await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url);
     location.hash = `#/search/barcode/${encodeURIComponent(res.getText())}`;
   } catch (e) {
-    msg.textContent = 'No barcode found in that photo. Try again closer, or type the digits.';
+    msg.textContent = 'No barcode found. Try again closer, or type the digits.';
   } finally { URL.revokeObjectURL(url); }
 }
 
 // ---------------------------------------------------------------- editions
 let fmt = 'All';
 async function editions(kind, text) {
-  app.innerHTML = `<p class="loading"><span class="spin"></span>Searching Discogs for “${esc(text)}”…</p>`;
+  chrome('Editions', true);
+  app.innerHTML = `<div class="view"><h1 class="large-title">Editions</h1>
+    <div class="group"><div class="row">${I.spinner}<div class="grow s">Searching Discogs for “${esc(text)}”</div></div></div></div>`;
   let d;
   try { d = await api(`/api/search?${kind}=${encodeURIComponent(text)}`); }
-  catch (e) { return identify(`Search failed: ${e.message}`); }
+  catch (e) { return home(`Search failed: ${e.message}`); }
   const rows = d.results;
   if (rows.length === 1 && !d.note) return location.replace(`#/release/${rows[0].id}`);
   const draw = () => {
     const shown = rows.filter(r => fmt === 'All' || (r.format || '').includes(fmt));
-    app.innerHTML = `
-      <p style="margin:4px 0 10px"><a href="#/" class="iconbtn" style="padding-left:0">‹ New search</a></p>
-      ${d.note ? `<p class="note">${esc(d.note)}</p>` : ''}
-      <h3>${rows.length ? `Which edition? ${rows.length} found for “${esc(text)}”` : `Nothing found for “${esc(text)}”`}</h3>
-      ${rows.length ? `<div class="seg">${['All', 'Vinyl', 'CD'].map(f => `<button aria-pressed="${f === fmt}" data-f="${f}">${f}</button>`).join('')}</div>` : ''}
-      <div id="list">${shown.map(r => `
-        <button class="edition" data-id="${r.id}">
-          ${r.thumb ? `<img src="${esc(r.thumb)}" alt="" loading="lazy">` : '<div class="ph"></div>'}
-          <div style="min-width:0">
-            <b>${esc(r.title)}</b>
-            <small>${esc([r.format, r.year, r.country].filter(Boolean).join(' · '))}</small>
-            <small>${esc([r.label, r.catno].filter(Boolean).join(' · '))}</small>
-            ${r.owned ? '<span class="badge good" style="margin-top:4px">On your shelf</span>' : ''}
+    app.innerHTML = `<div class="view">
+      <h1 class="large-title">Editions</h1>
+      ${d.note ? `<div class="banner">${esc(d.note)}</div>` : ''}
+      ${rows.length ? `<div class="seg" role="tablist">${['All', 'Vinyl', 'CD'].map(f => `<button role="tab" aria-selected="${f === fmt}" data-f="${f}">${f}</button>`).join('')}</div>` : ''}
+      <p class="footnote" style="margin:0 0 8px;padding:0 4px">${rows.length ? `${shown.length} of ${rows.length} for “${esc(text)}”` : `Nothing found for “${esc(text)}”. Try the catalogue number, or artist and title.`}</p>
+      ${shown.length ? `<div class="group" style="--inset:84px">${shown.map(r => `
+        <button class="row" data-id="${r.id}">
+          ${r.thumb ? `<img class="art lg" src="${esc(r.thumb)}" alt="" loading="lazy">` : '<div class="art lg"></div>'}
+          <div class="grow">
+            <div class="t wrap" style="font-size:16px;font-weight:600">${esc(r.title)}</div>
+            <div class="s" style="font-size:14px">${esc([r.format, r.year, r.country].filter(Boolean).join(' · '))}</div>
+            <div class="s" style="font-size:14px">${esc([r.label, r.catno].filter(Boolean).join(' · '))}</div>
+            ${r.owned ? `<span class="pill green" style="margin-top:6px">${I.check}On your shelf</span>` : ''}
           </div>
-        </button>`).join('') || (rows.length ? '<p class="empty">No editions in this format.</p>' : '<p class="empty">Try the catalogue number, or artist and title.</p>')}
-      </div>`;
+          ${I.chev}
+        </button>`).join('')}</div>` : ''}
+    </div>`;
     app.querySelectorAll('.seg button').forEach(b => b.onclick = () => { fmt = b.dataset.f; draw(); });
-    app.querySelectorAll('.edition').forEach(b => b.onclick = () => location.hash = `#/release/${b.dataset.id}`);
+    app.querySelectorAll('button.row').forEach(b => b.onclick = () => location.hash = `#/release/${b.dataset.id}`);
   };
   draw();
 }
 
-// ---------------------------------------------------------------- card
-const sk = n => Array.from({length: n}, (_, i) => `<div class="skel" style="width:${90 - i * 18}%"></div>`).join('');
-const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+// ---------------------------------------------------------------- record card
+const sk = (n, h = '') => `<div class="row"><div class="grow">${Array.from({length: n}, (_, i) => `<div class="skel" style="width:${88 - i * 22}%;${h}"></div>`).join('')}</div></div>`;
 
 function ownership(o) {
-  if (!o) return `<div class="own"><div class="dot"></div><div><b>Not on your shelf or in your library</b></div></div>`;
-  if (o.kind === 'same') return `<div class="own same"><div class="dot"></div><div><b>You own this</b>
-    <small>${esc([o.format, o.year, o.reissue ? 'reissue' : ''].filter(Boolean).join(' · '))}</small></div></div>`;
-  if (o.kind === 'other_edition') return `<div class="own other"><div class="dot"></div><div><b>You own a different release</b>
-    <small>${esc([o.format, o.year, o.country, o.label].filter(Boolean).join(' · '))}</small></div></div>`;
-  return `<div class="own apple"><div class="dot"></div><div><b>In your Apple Music library, not on your shelf</b>
-    <small>${plural(o.plays, 'play')} · ${o.liked} liked</small></div></div>`;
+  const row = (cls, icon, t, s) => `<div class="row"><div class="ico ${cls}">${icon}</div><div class="grow"><div class="t wrap" style="font-weight:600">${t}</div>${s ? `<div class="s wrap">${esc(s)}</div>` : ''}</div></div>`;
+  if (!o) return row('gray', I.minus, 'Not on your shelf or in your library', '');
+  if (o.kind === 'same') return row('tint', I.check, 'You own this', [o.format, o.year, o.reissue ? 'Reissue' : ''].filter(Boolean).join(' · '));
+  if (o.kind === 'other_edition') return row('orange', I.stack, 'You own a different release', [o.format, o.year, o.country, o.label].filter(Boolean).join(' · '));
+  return row('blue', I.note, 'In your Apple Music library', `Not on your shelf · ${plural(o.plays, 'play')} · ${o.liked} liked`);
 }
 
+const tagsHTML = (style, decade, how) => style
+  ? `<span class="pill tint">${esc(style)}</span>${decade ? `<span class="pill">${esc(decade)}</span>` : ''}<span class="pill">${esc(how)}</span>`
+  : `<span class="pill">Style not clear from Discogs</span>`;
+
 async function card(id) {
-  app.innerHTML = `
-    <p style="margin:4px 0 10px"><a href="#/" class="iconbtn" style="padding-left:0">‹ New search</a></p>
-    <section class="card" id="c-rec">${sk(3)}</section>
-    <section class="card" id="c-own">${sk(1)}</section>
-    <section class="card" id="c-picks"><h3>Closest in your collection</h3>${sk(3)}</section>
-    <section class="card" id="c-listen"><h3>Listen</h3>${sk(2)}</section>
-    <section class="card" id="c-price"><h3>Price &amp; market</h3>${sk(2)}</section>
-    <p class="attrib" id="attrib"></p>`;
+  chrome('', true);
+  app.innerHTML = `<div class="view">
+    <div class="hero" id="hero"><div class="ph"></div><div class="skel" style="width:55%;height:18px;margin:0 auto 8px"></div><div class="skel" style="width:40%;height:16px;margin:0 auto"></div></div>
+    <div class="group" id="own">${sk(1)}</div>
+    <div class="section-h"><h2>Closest in Your Collection</h2></div>
+    <div class="group" id="picks">${sk(2)}${sk(2)}</div>
+    <div class="section-h"><h2>Listen</h2></div>
+    <div class="group" id="listen" style="--inset:62px">${sk(1)}${sk(1)}${sk(1)}</div>
+    <div class="chips" id="links"></div>
+    <div class="section-h"><h2>Price &amp; Market</h2></div>
+    <div class="group" id="price">${sk(2)}</div>
+    <p class="attrib" id="attrib"></p>
+  </div>`;
   let r;
   try { r = await api(`/api/release/${id}`); }
-  catch (e) { app.innerHTML = `<p class="note">Could not load this release: ${esc(e.message)}</p><a class="btn ghost" href="#/">New search</a>`; return; }
+  catch (e) { app.innerHTML = `<div class="view"><div class="banner">Could not load this release: ${esc(e.message)}</div><a class="btn" href="#/">New Search</a></div>`; return; }
+  remember(r);
+  chrome(r.title, true);
 
-  $('#c-rec').innerHTML = `
-    ${r.live ? '' : '<p class="note">Discogs did not answer; showing the copy saved on this computer.</p>'}
-    <div class="rec">
-      ${r.image ? `<img src="${esc(r.image)}" alt="">` : '<div class="ph"></div>'}
-      <div style="min-width:0">
-        <h2>${esc(r.title)}</h2>
-        <p class="artist">${esc(r.artist)}</p>
-        <p class="meta">${esc([r.formats, r.year, r.country].filter(Boolean).join(' · '))}</p>
-        <p class="meta">${esc([r.label, r.catno].filter(Boolean).join(' · '))}</p>
-      </div>
-    </div>
-    <div class="style" id="style">${styleChip(r.style, r.decade, 'From Discogs styles')}</div>`;
-  $('#c-own').innerHTML = ownership(r.own);
+  $('#hero').innerHTML = `
+    ${r.live ? '' : '<div class="banner">Discogs did not answer, so this is the copy saved on your computer.</div>'}
+    ${r.image ? `<img src="${esc(r.image)}" alt="Cover of ${esc(r.title)}">` : '<div class="ph"></div>'}
+    <h1>${esc(r.title)}</h1>
+    <p class="artist">${esc(r.artist)}</p>
+    <p class="meta">${esc([r.format, r.year, r.country].filter(Boolean).join(' · '))}</p>
+    <p class="meta" style="text-transform:none;font-weight:400;margin-top:2px">${esc([r.label, r.catno].filter(Boolean).join(' · '))}</p>
+    <div class="tags" id="tags">${tagsHTML(r.style, r.decade, 'Discogs')}</div>`;
+  $('#own').innerHTML = ownership(r.own);
   $('#attrib').innerHTML = `Data provided by <a href="${esc(r.uri)}" target="_blank" rel="noopener">Discogs</a>`;
 
   const m = r.market;
-  $('#c-price').innerHTML = `<h3>Price &amp; market</h3>
-    <div class="price">${m.low != null ? `<b>A$${Number(m.low).toFixed(2)}</b><small>lowest listed for this edition · any condition, plus shipping</small>`
-                                       : '<p class="empty">No copies listed for sale</p>'}</div>
-    <div class="market">
-      <div><b>${m.have ?? '–'}</b><small>own it</small></div>
-      <div><b>${m.want ?? '–'}</b><small>want it</small></div>
-      <div><b>${m.for_sale ?? '–'}</b><small>for sale</small></div>
+  $('#price').innerHTML = `
+    <div class="price">${m.low != null ? `<b>A$${Number(m.low).toFixed(2)}</b><small>Lowest listed for this edition · any condition, plus shipping</small>`
+                                        : '<b style="font-size:17px;font-weight:600">No copies for sale</b>'}</div>
+    <div class="stats">
+      <div><b>${m.have ?? '–'}</b><small>Own it</small></div>
+      <div><b>${m.want ?? '–'}</b><small>Want it</small></div>
+      <div><b>${m.for_sale ?? '–'}</b><small>For sale</small></div>
     </div>`;
 
   loadPicks(id, r);
   loadSamples(id);
 }
 
-function styleChip(style, decade, how) {
-  return style ? `<span class="fam">${esc(style)}</span>${decade ? `<span class="badge">${esc(decade)}</span>` : ''}<span class="badge">${esc(how)}</span>`
-               : `<span class="badge">Style not clear from Discogs</span>`;
-}
-
 async function loadPicks(id, r) {
-  const el = $('#c-picks');
-  el.innerHTML = `<h3>Closest in your collection</h3><p class="loading"><span class="spin"></span>Asking the model (up to 20 s)…</p>`;
+  const el = $('#picks');
+  el.innerHTML = `<div class="row">${I.spinner}<div class="grow s">Finding the closest records…</div></div>${sk(2)}`;
   let x;
   try { x = await api(`/api/recommend/${id}`, {method: 'POST'}); }
   catch (e) { x = {status: 'unavailable: ' + e.message}; }
   if (!x.result) {
-    el.innerHTML = `<h3>Closest in your collection</h3><p class="empty">Recommendations unavailable.</p>
-      <p class="hint">${esc(x.status.replace(/^unavailable: /, ''))}</p>`;
+    el.innerHTML = `<div class="row"><div class="ico gray">${I.minus}</div><div class="grow"><div class="t">Recommendations unavailable</div>
+      <div class="s wrap">${esc(x.status.replace(/^unavailable: /, ''))}</div></div></div>`;
     return;
   }
   const res = x.result;
-  if (res.style !== 'Other/uncertain') $('#style').innerHTML = styleChip(res.style, r.decade, 'Model');
-  el.innerHTML = `<h3>Closest in your collection</h3>
-    <p class="sentence">${esc(res.sentence)}</p>
+  if (res.style !== 'Other/uncertain') $('#tags').innerHTML = tagsHTML(res.style, r.decade, 'Model');
+  el.style.setProperty('--inset', '58px');
+  el.innerHTML = `<div class="sentence">${esc(res.sentence)}</div>
     ${res.picks.length ? res.picks.map(p => `
-      <div class="pick">
-        <b>${esc(p.name)}</b>
-        <p>${esc(p.reason)}</p>
-        ${p.where === 'shelf' ? '<span class="badge good">On your shelf</span>'
-                              : `<span class="badge info">Library · ${plural(p.plays, 'play')} · ${p.liked} liked</span>`}
-      </div>`).join('') : '<p class="empty">Nothing close in your collection or library.</p>'}
-    <p class="hint">${esc(x.seconds)} s${x.attempts > 1 ? ` · ${x.attempts} attempts` : ''}</p>`;
+      <div class="row" style="align-items:flex-start">
+        <div class="ico ${p.where === 'shelf' ? 'tint' : 'blue'}" style="margin-top:2px">${p.where === 'shelf' ? I.disc : I.note}</div>
+        <div class="grow">
+          <div class="t wrap" style="font-size:16px;font-weight:600">${esc(p.name)}</div>
+          <div class="s wrap" style="margin:2px 0 6px">${esc(p.reason)}</div>
+          ${p.where === 'shelf' ? '<span class="pill tint">On your shelf</span>'
+                                : `<span class="pill blue">Library · ${plural(p.plays, 'play')} · ${p.liked} liked</span>`}
+        </div>
+      </div>`).join('')
+    : `<div class="row"><div class="grow s wrap">Nothing close in your collection or library.</div></div>`}`;
+  const foot = document.createElement('p');
+  foot.className = 'footnote'; foot.style.marginTop = '-18px';
+  foot.textContent = `${x.seconds} s${x.attempts > 1 ? ` · ${x.attempts} attempts` : ''}${x.cost ? ` · US$${x.cost.toFixed(4)}` : ''}`;
+  el.after(foot);
 }
 
 async function loadSamples(id) {
-  const el = $('#c-listen');
+  const el = $('#listen');
   let s;
   try { s = await api(`/api/samples/${id}`); } catch (e) { s = {tracks: [], videos: [], error: e.message}; }
-  const links = [
-    s.apple_url && `<a class="btn ghost" href="${esc(s.apple_url)}" target="_blank" rel="noopener">Apple Music</a>`,
-    ...(s.videos || []).slice(0, 1).map(v => `<a class="btn ghost" href="${esc(v[0])}" target="_blank" rel="noopener">▶ ${esc(v[1]).slice(0, 28)}</a>`),
-    s.youtube && `<a class="btn ghost" href="${esc(s.youtube)}" target="_blank" rel="noopener">Search YouTube</a>`,
+  el.innerHTML = s.tracks.length ? s.tracks.map((t, i) => `
+    <div class="row">
+      <span class="num">${i + 1}</span>
+      <div class="grow"><div class="t">${esc(t.name)}</div></div>
+      <button class="play" aria-label="Play ${esc(t.name)}">${I.play}</button>
+      <audio preload="none" src="${esc(t.preview)}"></audio>
+    </div>`).join('')
+    : `<div class="row"><div class="grow s">No Apple Music previews for this album.</div></div>`;
+  $('#links').innerHTML = [
+    s.apple_url && `<a class="chip" href="${esc(s.apple_url)}" target="_blank" rel="noopener">${I.note}Apple Music</a>`,
+    ...(s.videos || []).slice(0, 1).map(v => `<a class="chip" href="${esc(v[0])}" target="_blank" rel="noopener">${I.play}Discogs video</a>`),
+    s.youtube && `<a class="chip" href="${esc(s.youtube)}" target="_blank" rel="noopener">${I.search}YouTube</a>`,
   ].filter(Boolean).join('');
-  el.innerHTML = `<h3>Listen</h3>
-    ${s.tracks.length ? s.tracks.map((t, i) => `
-      <div class="track"><button class="play" data-i="${i}" aria-label="Play ${esc(t.name)}">▶</button><span>${esc(t.name)}</span>
-      <audio preload="none" src="${esc(t.preview)}"></audio></div>`).join('') : '<p class="empty">No Apple Music previews.</p>'}
-    <div class="links">${links}</div>`;
+  const reset = b => b.innerHTML = I.play;
   el.querySelectorAll('.play').forEach(b => b.onclick = () => {
-    const a = b.nextElementSibling.nextElementSibling;
-    el.querySelectorAll('audio').forEach(o => { if (o !== a) { o.pause(); o.previousElementSibling.previousElementSibling.textContent = '▶'; } });
-    if (a.paused) { a.play(); b.textContent = '❚❚'; } else { a.pause(); b.textContent = '▶'; }
-    a.onended = () => b.textContent = '▶';
+    const a = b.nextElementSibling;
+    el.querySelectorAll('audio').forEach(o => { if (o !== a && !o.paused) { o.pause(); reset(o.previousElementSibling); } });
+    if (a.paused) { a.play(); b.innerHTML = I.pause; } else { a.pause(); reset(b); }
+    a.onended = () => reset(b);
   });
 }
 
@@ -318,14 +435,14 @@ function route() {
   window.scrollTo(0, 0);
   if (view === 'search') return editions(a, decodeURIComponent(b || ''));
   if (view === 'release') return card(a);
-  identify();
+  home();
 }
 window.addEventListener('hashchange', route);
 $('#refresh').onclick = async e => {
-  e.target.disabled = true; e.target.textContent = 'Refreshing…';
-  try { const d = await api('/api/refresh', {method: 'POST'}); e.target.textContent = `${d.shelf} + ${d.library}`; }
-  catch (err) { e.target.textContent = 'Failed'; }
-  setTimeout(() => { e.target.textContent = 'Refresh'; e.target.disabled = false; }, 2000);
+  const b = e.currentTarget; b.disabled = true; b.style.opacity = .4;
+  try { const d = await api('/api/refresh', {method: 'POST'}); home(`Refreshed: ${d.shelf} shelf records, ${d.library} library albums.`); }
+  catch (err) { home(`Refresh failed: ${err.message}`); }
+  b.disabled = false; b.style.opacity = '';
 };
 route();
 </script>
