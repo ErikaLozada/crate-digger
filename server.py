@@ -12,6 +12,7 @@ import engine, library, harness
 import styles as ST
 
 PORT = int(os.environ.get('CD_PORT', 8000))
+HOST = os.environ.get('CD_HOST', '0.0.0.0')   # 127.0.0.1 when only tailscale serve should reach it
 UA = 'CrateDiggerPrototype/0.1 (personal collection)'
 TOKEN = open('discogs_token.txt').read().strip() if os.path.exists('discogs_token.txt') else os.environ.get('DISCOGS_TOKEN', '')
 
@@ -196,4 +197,4 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     load()
     print('open http://%s:%d on your iPhone (same Wi-Fi), or http://localhost:%d here' % (socket.gethostname(), PORT, PORT))
-    ThreadingHTTPServer(('0.0.0.0', PORT), Handler).serve_forever()
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
