@@ -5,10 +5,12 @@ description: Take a change from idea to live in this project, safely alongside o
 
 # Ship a feature
 
+**Worker started by a lead** (the `Lead:` line in your `TASK.md` is not `none`): skip steps 1, 3 and 4 and the merging in step 9. Read `TASK.md` and start at step 5; report to the lead with messages that begin with your name in brackets, e.g. `[fix-search] READY ...`.
+
 1. **Look around.** Run `git status` and `make status`, and check for other agents with `herdr agent list`.
 2. **Pin down done.** Say in one or two sentences what done looks like and which requirement or decision it serves (`Crate Digger Product Requirements v5.md`, `docs/decisions.md`). If it changes a settled decision, ask the user first.
-3. **Isolate if anyone else is active.** `make task NAME=<short-name> OWNER=<you>`, work in the new folder, and fill in `TASK.md` (goal, files, contracts). Working alone, use `main` directly.
-4. **Announce.** Tell every active peer which files you will change: `herdr agent prompt <name> "..." --wait`, then `herdr agent read <name>` for the reply (outside herdr: `SendMessage` for Claude, `scripts/watch-codex.py --send` for Codex).
+3. **Isolate if anyone else is active.** `make task NAME=<short-name> OWNER=<you>`, work in the new folder, and fill in `TASK.md` (goal, files, contracts). To hand the task to another agent instead, `make worker NAME=<short-name> KIND=codex|claude` and brief it. Working alone, use `main` directly.
+4. **Announce.** Tell every active peer which files you will change: `herdr agent prompt <name> "..." --wait`, then `herdr agent read <name>` for the reply (outside herdr: `SendMessage` for Claude, `scripts/watch-codex.py --send` for Codex). Start every message with your name in brackets.
 5. **Build test-first where you can.** Add or change tests in `tests/` (`unittest`, `node:test`), then the code, matching the surrounding style. Check the change in the real app on your task's test port (see `TASK.md`), never on the live service.
 6. **Check what it touches.** If the change alters the model request (`harness.SYSTEM`, `harness.lists_text`, `styles.DEFINITIONS`), saved answers start over and the eval may need a new round (skill `run-eval`). Write that in `TASK.md` under Contracts.
 7. **Commit** small commits whose message says why, with your agent trailer (`Co-Authored-By: ...`). The pre-commit hook runs the tests.

@@ -25,6 +25,7 @@ Owner: $OWNER
 Status: working
 Branch: $NAME
 Port: $PORT
+Lead: none (make worker fills this in)
 
 ## Goal
 (what done looks like, and the requirement or decision it serves)

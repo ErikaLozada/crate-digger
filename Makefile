@@ -1,5 +1,5 @@
 # Commands for people and agents alike; see AGENTS.md.
-.PHONY: test report status deploy setup task finish
+.PHONY: test report status deploy setup task finish worker
 
 test:
 	python3 -W ignore::ResourceWarning -m unittest discover tests   # the code reads with json.load(open(...)) throughout
@@ -23,3 +23,6 @@ task:
 
 finish:
 	@bash scripts/finish-task.sh "$(NAME)"
+
+worker:
+	@bash scripts/start-worker.sh "$(NAME)" "$(KIND)" "$(OWNER)"

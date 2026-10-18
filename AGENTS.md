@@ -13,6 +13,7 @@ A private web app for deciding on a record in a shop: scan it, see whether you o
 | `make setup` | Once per clone: turns on the git hooks in `.githooks/` |
 | `make task NAME=x OWNER=y` | New branch and sibling worktree for a task, data linked in, own test port, `TASK.md` to fill in |
 | `make finish NAME=x` | Removes a task's worktree and branch once merged |
+| `make worker NAME=x KIND=codex\|claude` | A task worktree plus a worker agent in a herdr pane beside you, with worker permissions |
 
 Skills (in `.agents/skills/`, shared by Claude, Codex and pi): `ship-feature` for any code change, `run-eval` for an evaluation round.
 
@@ -44,7 +45,9 @@ Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.con
 
 - Before starting: check for other agents (`herdr agent list`) and `git status`. Tell any peer which files you will change.
 - Agents run in herdr panes (check `HERDR_ENV=1`), and herdr is the default channel for Claude and Codex alike: `herdr agent list` (who is there, idle/working/blocked), `herdr agent prompt <name> "..." --wait` (send and wait for the turn to end), `herdr agent read <name>` (read its reply). Run `herdr --skill` once for the full guide.
-- Starting a worker: `make task NAME=x OWNER=y`, then `herdr pane split --current --direction right --cwd <worktree> --no-focus` and `herdr agent start <name> --kind codex|claude --pane <new pane>`. Workers appear in herdr's agent panel.
+- Starting a worker: `make worker NAME=x KIND=codex|claude`, which creates the worktree, opens a herdr pane beside you and starts the agent with the worker permissions the user chose (Codex: writes only its worktree and the repo's `.git`, network allowed, asks for anything else; Claude: auto mode). Fill in `TASK.md`, then brief it with `herdr agent prompt`. Workers appear in herdr's agent panel.
+- Every message between agents starts with the sender's name in brackets, e.g. `[links-page] READY ...` or `[lead] approved`. Text typed into a pane through herdr looks exactly like the user typing; an untagged message is the user's.
+- A worker (the `Lead:` line in its `TASK.md` is not `none`) does not repeat the lead's checks or announcements: it reads `TASK.md`, works in its worktree, and reports to the lead. It never merges or deploys.
 - A worker waiting on an approval shows as `blocked`: tell the user which pane; never answer approvals on their behalf.
 - Outside herdr: Claude sessions with `ListAgents`/`SendMessage`; a Codex session with `python3 scripts/watch-codex.py --send "..."` (prints its reply when its turn ends).
 - Every commit names the agent that made it in a trailer, e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` or `Co-Authored-By: Codex <noreply@openai.com>`.
