@@ -1,7 +1,7 @@
 import csv, io, json, os, tempfile, unittest, urllib.error
 from unittest import mock
 
-import build_compact, harness, server
+import build_compact, engine, harness, server
 
 
 def raw_release(i, master=None):
@@ -105,6 +105,72 @@ class CleanPicksTests(unittest.TestCase):
         ans = {'sentence': 's', 'style': 'x', 'picks': [{'id': i, 'reason': ''} for i in ['L9', 'S1', 'L1', 'L1', 'L2', 'L3', 'L4']]}
         out = harness.clean(ans, {'S1', 'L1', 'L2', 'L3', 'L4'}, 'S1')
         self.assertEqual([p['id'] for p in out['picks']], ['L1', 'L2', 'L3'])
+
+
+def rec(i, leader, players=(), labels=(), producers=(), master=None, year=1970):
+    """A shelf Rec built through compact(): leader (id, name), players [(id, name, role)], labels [(id, name)]."""
+    r = raw_release(i, master)
+    r.update(year=year, title='Title %d' % i, artists_sort=leader[1],
+             artists=[{'id': leader[0], 'name': leader[1], 'anv': '', 'join': ''}],
+             extraartists=[{'id': p, 'name': n, 'role': role, 'tracks': ''} for p, n, role in players]
+                          + [{'id': p, 'name': n, 'role': 'Producer', 'tracks': ''} for p, n in producers],
+             labels=[{'id': l, 'name': n, 'catno': 'X%d' % i} for l, n in labels])
+    return engine.Rec(server.compact(r), {}, 'shelf', None)
+
+
+class ShelfLinksTests(unittest.TestCase):
+    BN = (5, 'Blue Note')
+
+    def test_empty_when_nothing_shared(self):
+        t = rec(1, (10, 'A'), [(11, 'B', 'Bass')])
+        self.assertEqual(engine.shelf_links(t, [rec(2, (20, 'C'), [(21, 'D', 'Drums')])]),
+                         {'musicians': [], 'producers': [], 'labels': []})
+
+    def test_musician_role_and_record(self):
+        t = rec(1, (10, 'Donald Byrd'), [(11, 'Herbie Hancock', 'Piano')])
+        o = rec(2, (20, 'Wayne Shorter'), [(11, 'Herbie Hancock', 'Keyboards')], year=1966)
+        m = engine.shelf_links(t, [o])['musicians']
+        self.assertEqual(m, [{'name': 'Herbie Hancock', 'role': 'Piano', 'count': 1,
+                              'records': [{'id': 2, 'artist': 'Wayne Shorter', 'title': 'Title 2', 'year': 1966}]}])
+
+    def test_role_from_shelf_when_leader_of_inspected(self):
+        t = rec(1, (10, 'Lee Morgan'))
+        o = rec(2, (20, 'Art Blakey'), [(10, 'Lee Morgan', 'Trumpet')])
+        self.assertEqual(engine.shelf_links(t, [o])['musicians'][0]['role'], 'Trumpet')
+
+    def test_excludes_self_and_other_editions_and_dedupes_albums(self):
+        p = [(11, 'B', 'Bass')]
+        t = rec(1, (10, 'A'), p, labels=[self.BN], master=100)
+        shelf = [t, rec(2, (10, 'A'), p, labels=[self.BN], master=100),           # same album, other edition
+                 rec(3, (20, 'C'), p, labels=[self.BN], master=200, year=1960),
+                 rec(4, (20, 'C'), p, labels=[self.BN], master=200, year=1990),   # second edition of album 200
+                 rec(5, (30, 'D'), p, labels=[self.BN])]
+        out = engine.shelf_links(t, shelf)
+        self.assertEqual([(x['count'], [r['id'] for r in x['records']]) for x in out['musicians']], [(2, [3, 5])])
+        self.assertEqual(out['labels'][0]['count'], 2)
+
+    def test_ordering_and_limits(self):
+        t = rec(1, (10, 'Leader'), [(10 + k, 'P%d' % k, 'Sax') for k in range(1, 9)],
+                labels=[(5, 'L1'), (6, 'L2'), (7, 'L3'), (8, 'Columbia')], producers=[(90 + k, 'Pr%d' % k) for k in range(4)])
+        shelf = []
+        for j in range(4):    # P1 on 4 records, P2 on 3, ... ; leader 10 plays as sideman on record 2
+            players = [(10 + k, 'P%d' % k, 'Sax') for k in range(1, 9) if k <= 4 - j or k > 4]
+            if j == 0: players.append((10, 'Leader', 'Flute'))
+            shelf.append(rec(2 + j, (50 + j, 'S%d' % j), players, labels=[(5, 'L1'), (6, 'L2'), (7, 'L3'), (8, 'Columbia')][:4 - j],
+                             producers=[(90 + k, 'Pr%d' % k) for k in range(4)], year=1980 - j))
+        out = engine.shelf_links(t, shelf)
+        self.assertEqual([m['name'] for m in out['musicians']], ['Leader', 'P1', 'P5', 'P6', 'P7', 'P8'])
+        self.assertEqual(out['musicians'][0]['role'], 'Flute')
+        self.assertEqual([r['year'] for r in out['musicians'][1]['records']], [1977, 1978, 1979])
+        self.assertEqual(len(out['producers']), 3)
+        self.assertEqual([(l['name'], l['count']) for l in out['labels']], [('L1', 4), ('L2', 3)])
+
+    def test_release_always_has_links(self):
+        server.SHELF, server.SHELF_IDS, server.LIB = [], set(), []
+        raw = raw_release(1)
+        raw.update(images=[], videos=[], tracklist=[])
+        with mock.patch.object(server, 'fetch_release', return_value=(raw, {}, True)):
+            self.assertEqual(server.release(1)['links'], {'musicians': [], 'producers': [], 'labels': []})
 
 
 if __name__ == '__main__':
