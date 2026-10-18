@@ -94,7 +94,7 @@ test('shelf connections render from release data before recommendations arrive',
 });
 
 test('missing or empty connections leave no heading or group', async () => {
-  for (const links of [undefined, {musicians: [], producers: [], labels: []}]) {
+  for (const links of [undefined, {musicians: [], producers: [], labels: []}, {artists: [], musicians: [], producers: [], labels: []}]) {
     const b = browser(), card = b.navigate('#/release/A');
     b.respond('/api/release/A', {...record('A'), links}); await card;
     assert.equal(b.elements.get('connections').innerHTML, '');
@@ -119,6 +119,35 @@ test('connection subtitles handle counts, absent roles and unknown years, and es
   assert.match(markup, /&lt;Label&gt;/);
   assert.match(markup, /&lt;Title&gt;/);
   assert.doesNotMatch(markup, /<Label>|<Title>|href="#\/release\/"/);
+});
+
+test('artist connections come first with linked, escaped album titles and count wording', async () => {
+  const b = browser(), card = b.navigate('#/release/A');
+  const records = ['A', 'B', 'C'].map((title, i) => ({id: i + 1, title, year: 1965}));
+  b.respond('/api/release/A', {...record('A'), links: {...shelfLinks, artists: [
+    {name: 'Stanley Turrentine', count: 4, records},
+    {name: '<Artist>', count: 1, records: [{id: '"<1>', title: '<Title>', year: '<Year>'}]},
+    {name: 'Unknown year', count: 1, records: [{id: 9, title: 'Undated', year: null}]},
+  ]}}); await card;
+  const markup = b.elements.get('connections').innerHTML, text = plain(markup);
+  assert.ok(text.indexOf('More by Stanley Turrentine') < text.indexOf('Billy Higgins'));
+  assert.match(text, /4 records you own: A, B, C and 1 more/);
+  assert.match(markup, /More by &lt;Artist&gt;/);
+  assert.match(markup, /href="#\/release\/%22%3C1%3E">&lt;Title&gt;<\/a> \(&lt;Year&gt;\)/);
+  assert.match(markup, /href="#\/release\/9">Undated<\/a><\/div>/);
+  assert.doesNotMatch(markup, /<Artist>|<Title>|<Year>|null|undefined/);
+  for (const r of records) assert.ok(markup.includes(`href="#/release/${r.id}">${r.title}</a>`));
+});
+
+test('a lone artist connection shows album and year without repeating the artist', async () => {
+  const b = browser(), card = b.navigate('#/release/A');
+  b.respond('/api/release/A', {...record('A'), links: {artists: [
+    {name: 'Stanley Turrentine', count: 1, records: [{id: 2, title: "Hustlin'", year: 1965}]},
+  ]}}); await card;
+  const text = plain(b.elements.get('connections').innerHTML);
+  assert.match(text, /Connections on Your Shelf/);
+  assert.match(text, /Hustlin&#39; \(1965\)/);
+  assert.doesNotMatch(text, /on Hustlin|1965,|records you own/);
 });
 
 test('late release connections cannot populate a different card or a return to the same card', async () => {

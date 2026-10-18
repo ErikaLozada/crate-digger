@@ -124,7 +124,37 @@ class ShelfLinksTests(unittest.TestCase):
     def test_empty_when_nothing_shared(self):
         t = rec(1, (10, 'A'), [(11, 'B', 'Bass')])
         self.assertEqual(engine.shelf_links(t, [rec(2, (20, 'C'), [(21, 'D', 'Drums')])]),
-                         {'musicians': [], 'producers': [], 'labels': []})
+                         {'artists': [], 'musicians': [], 'producers': [], 'labels': []})
+
+    def test_artist_exclusions_dedupe_and_record_order(self):
+        t = rec(1, (10, 'A'), master=100)
+        shelf = [t, rec(2, (10, 'A'), master=100),
+                 rec(3, (10, 'A'), master=200, year=1980),
+                 rec(4, (10, 'A'), master=200, year=1990),
+                 rec(5, (10, 'A'), year=1960), rec(6, (10, 'A'), year=1970),
+                 rec(7, (10, 'A'), year=0),
+                 rec(8, (20, 'Other'), [(10, 'A', 'Piano')])]
+        shelf.append(shelf[4])
+        out = engine.shelf_links(t, shelf)
+        self.assertEqual(out['artists'], [{'name': 'A', 'count': 4, 'records': [
+            {'id': 5, 'artist': 'A', 'title': 'Title 5', 'year': 1960},
+            {'id': 6, 'artist': 'A', 'title': 'Title 6', 'year': 1970},
+            {'id': 3, 'artist': 'A', 'title': 'Title 3', 'year': 1980}]}])
+        self.assertEqual([r['id'] for r in out['musicians'][0]['records']], [8])
+
+    def test_multiple_lead_artists_order_and_limit(self):
+        t = rec(1, (10, 'Z'))
+        t.main = {10: 'Z', 11: 'B', 12: 'A', 13: 'C'}
+        shelf = []
+        for i, name in t.main.items():
+            shelf.extend(rec(i * 10 + j, (i, name)) for j in range(3 if name == 'Z' else 2))
+        out = engine.shelf_links(t, shelf)
+        self.assertEqual([(e['name'], e['count']) for e in out['artists']],
+                         [('Z', 3), ('A', 2), ('B', 2)])
+        self.assertEqual(out['musicians'], [])
+        o = rec(99, (10, 'Z'))
+        o.main = t.main.copy()
+        self.assertEqual([e['name'] for e in engine.shelf_links(t, [o])['artists']], ['A', 'B', 'C'])
 
     def test_musician_role_and_record(self):
         t = rec(1, (10, 'Donald Byrd'), [(11, 'Herbie Hancock', 'Piano')])
@@ -170,7 +200,7 @@ class ShelfLinksTests(unittest.TestCase):
         raw = raw_release(1)
         raw.update(images=[], videos=[], tracklist=[])
         with mock.patch.object(server, 'fetch_release', return_value=(raw, {}, True)):
-            self.assertEqual(server.release(1)['links'], {'musicians': [], 'producers': [], 'labels': []})
+            self.assertEqual(server.release(1)['links'], {'artists': [], 'musicians': [], 'producers': [], 'labels': []})
 
 
 if __name__ == '__main__':

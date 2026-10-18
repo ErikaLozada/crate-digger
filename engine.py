@@ -150,13 +150,15 @@ def link(t, o):
     return out
 
 def shelf_links(t, shelf):
-    """Who and what t shares with the shelf: musicians, producers and labels, each with the shelf albums named.
+    """Who and what t shares with the shelf: artists, musicians, producers and labels, each with the shelf albums named.
     Each album counts once, however many editions of it you own; t itself and other editions of it are left out."""
-    mus, prod, lab = {}, {}, {}
+    art, mus, prod, lab = {}, {}, {}, {}
     tp = {**{i: None for i in t.main}, **t.players}
     for o in shelf:
         if o.id == t.id or (t.master and o.master == t.master): continue
         a = o.master or ('r', o.id)
+        for i, n in t.main.items():
+            if i in o.main: art.setdefault(i, {'name': n, 'recs': {}})['recs'].setdefault(a, o)
         op = {**{i: None for i in o.main}, **o.players}
         for i in tp:
             if i in op and not (i in t.main and i in o.main):
@@ -173,7 +175,8 @@ def shelf_links(t, shelf):
         return {'name': e['name'], **({'role': e['role'] or ''} if 'role' in e else {}), 'count': len(e['recs']),
                 'records': [{'id': o.id, 'artist': o.artist, 'title': o.title, 'year': o.oyear} for o in recs]}
     order = lambda es, lead=False: sorted(es, key=lambda e: (-(lead and e['lead']), -len(e['recs']), e['name']))
-    return {'musicians': [entry(e) for e in order(mus.values(), True)[:6]],
+    return {'artists': [entry(e) for e in order(art.values())[:3]],
+            'musicians': [entry(e) for e in order(mus.values(), True)[:6]],
             'producers': [entry(e) for e in order(prod.values())[:3]],
             'labels': [entry(e) for e in order(lab.values())[:2]]}
 
