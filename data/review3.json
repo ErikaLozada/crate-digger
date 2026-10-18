@@ -1,0 +1,607 @@
+[
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 12596028,
+  "record": "E.S.T. — Seven Days Of Falling",
+  "your_style": "ECM & European contemporary jazz",
+  "model_style": "ECM & European contemporary jazz",
+  "close_match_known": true,
+  "your_note": "Seeing by Tord Gustavsen Trio",
+  "picks": [
+   "Aldo Romano, Miroslav Vitous & Steve Kuhn — Oceans in the Sky [library] — European contemporary jazz trio with spacious interplay and lyrical piano-led improvisation.",
+   "Ralph Towner, Gary Burton — Matchbook [shelf] — ECM-style electric jazz trio pairing airy textures with conversational, rhythmically alert interplay.",
+   "Keith Jarrett, Jan Garbarek, Palle Danielsson & Jon Christensen — Belonging [library] — European piano-led jazz with ECM’s spacious sound and sophisticated ensemble interaction."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 4864049,
+  "record": "Makoto Matsushita — First Light",
+  "your_style": "City pop & AOR",
+  "model_style": "City pop & AOR",
+  "close_match_known": true,
+  "your_note": "love trip by yakako mamiya",
+  "picks": [
+   "Anri — Timely!! [library] — Anri’s polished, breezy city-pop combines sophisticated AOR songwriting with similarly glossy jazz-funk arrangements.",
+   "Takako Mamiya — LOVE TRIP [library] — Takako Mamiya’s city pop shares First Light’s urbane vocals, jazz-funk groove, and refined late-night studio sheen.",
+   "Tomoko Aran — Fuyu Kukan (+1) [2022 Restored Version] [library] — Tomoko Aran’s synth-led urban pop closely matches Matsushita’s sleek electronic textures and sophisticated Japanese AOR atmosphere."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 1216425,
+  "record": "Donald Byrd — Royal Flush",
+  "your_style": "Hard bop, post-bop & soul-jazz",
+  "model_style": "Hard bop, post-bop & soul-jazz",
+  "close_match_known": true,
+  "your_note": "Stanly Turrenty - Hustlin",
+  "picks": [
+   "Dexter Gordon — Go [library] — Dexter Gordon’s Blue Note bop session shares the relaxed-but-punchy rhythm section and straight-ahead hard-bop language.",
+   "John Coltrane — Blue Train: The Complete Masters [shelf] — Coltrane’s Blue Train is a close Blue Note hard-bop counterpart with similarly bright horns and vigorous ensemble momentum."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 28753711,
+  "record": "Jiro Inagaki & Soul Media — Funky Stuff",
+  "your_style": "Jazz-funk & fusion",
+  "model_style": "Jazz-funk & fusion",
+  "close_match_known": true,
+  "your_note": "Cat by Hiroshi Suzuki",
+  "picks": [
+   "Hiroshi Suzuki — Cat [library] — Hiroshi Suzuki’s Japanese jazz-funk shares the period’s punchy brass, organ-led grooves, and soulful ensemble drive.",
+   "Isao Suzuki Trio / Isao Suzuki Quartet — Blow Up [shelf] — Isao Suzuki’s Japanese jazz-funk trio date closely matches the muscular bass, modal color, and improvisational energy.",
+   "Herbie Mann — Mississippi Gambler [shelf] — Herbie Mann’s groove-focused jazz-funk similarly combines earthy soul-jazz rhythms with expressive improvising."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 37926900,
+  "record": "Orquesta Akokán — América!",
+  "your_style": "Salsa & Cuban",
+  "model_style": "Salsa & Cuban",
+  "close_match_known": true,
+  "your_note": "Buena Vista Social Club",
+  "picks": [
+   "Bobby Cruz & Ricardo Ray — El Bestial Sonido de [library] — Classic salsa and boogaloo with similarly forceful brass, percussion, and dance-floor orchestration.",
+   "Afro Cuban All Stars — A Toda Cuba Le Gusta [library] — Large-ensemble Cuban dance music with vibrant percussion, horns, and closely related retro production.",
+   "Ray Barretto — Acid (Remastered 2024) [library] — Ray Barretto’s salsa and Latin-soul blend shares the punchy percussion and brassy, groove-led energy."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 34921262,
+  "record": "Alice Coltrane Featuring Pharoah Sanders — Journey In Satchidananda",
+  "your_style": "Free & spiritual jazz",
+  "model_style": "Free & spiritual jazz",
+  "close_match_known": true,
+  "your_note": "Bennie Maupin - The Jewel in The Lotus",
+  "picks": [
+   "Various Artists — Spiritual Jazz 3: Europe [library] — Spiritual-jazz compilation with devotional, modal, exploratory qualities closest to this record’s atmosphere.",
+   "Matthew Halsall — An Ever Changing View [library] — Matthew Halsall’s meditative, spiritually oriented modal jazz shares its contemplative intensity.",
+   "Yosuke Yamashita Trio — Clay [shelf] — Open, searching free-jazz language provides a credible parallel to Sanders’s ecstatic improvisation."
+  ],
+  "false_match": true,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 16030720,
+  "record": "Gabor Szabo — Dreams",
+  "your_style": "Free & spiritual jazz",
+  "model_style": "Free & spiritual jazz",
+  "close_match_known": true,
+  "your_note": "Matchbox - Gary Burton & Ralph Tower",
+  "picks": [],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 2499163,
+  "record": "Chick Corea — Return To Forever",
+  "your_style": "ECM & European contemporary jazz",
+  "model_style": "Latin jazz",
+  "close_match_known": true,
+  "your_note": "Matchbox - Gary Burton & Ralph Tower",
+  "picks": [
+   "Santana — Caravanserai [shelf] — Santana’s percussion-rich, Latin-inflected fusion shares the album’s exploratory electric-jazz atmosphere.",
+   "Enrico Pieranunzi — Enrico Pieranunzi Latin Jazz Quintet Live At Birdland [library] — A Latin-jazz quintet with acoustic piano-led improvisation and rhythmic Latin foundations."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 35896225,
+  "record": "Takuro Okada — Konoma",
+  "your_style": "Other/uncertain",
+  "model_style": "Jazz-funk & fusion",
+  "close_match_known": true,
+  "your_note": "Fukushima - Sinsuke Fujieda Group",
+  "picks": [
+   "Isao Suzuki Quartet — Orang-Utan [shelf] — Japanese jazz-fusion with exploratory electric textures and a strong rhythmic groove.",
+   "Toshiki Soejima & Nahokimama — Scene [library] — Contemporary Japanese jazz with guitar-centered, atmospheric fusion language.",
+   "Pat Metheny — Bright Size Life [shelf] — Lyrical electric-guitar fusion balancing spacious textures and jazz improvisation."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 4933286,
+  "record": "Minoru Muraoka — Bamboo",
+  "your_style": "Other/uncertain",
+  "model_style": "Jazz-funk & fusion",
+  "close_match_known": true,
+  "your_note": "In the groove - Jiro Inagaki and his Sould media, Doroty Ashby - Hip Harp",
+  "picks": [
+   "Jiro Inagaki and His Soul Media — Funky Stuff [library] — Japanese jazz-funk with tight grooves and similarly adventurous, traditional-meets-modern instrumental arrangements.",
+   "You & The Explosion Band — Original Soundtrack From Lupin III [shelf] — Japanese jazz-rock soundtrack combining melodic hooks, rhythmic drive, and the polished, cinematic fusion atmosphere heard here."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 7564034,
+  "record": "St Germain — St Germain",
+  "your_style": "House-jazz",
+  "model_style": "House-jazz",
+  "close_match_known": true,
+  "your_note": "st germain - tourist",
+  "picks": [
+   "St Germain — Tourist [shelf] — St Germain’s Tourist is the closest match: relaxed house rhythms, jazz instrumentation, and organic world-music textures.",
+   "St Germain — Tourist (Remastered) [Deluxe Version] [library] — The same artist’s Tourist similarly combines deep house, downtempo production, and live jazz-inflected playing."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 1294400,
+  "record": "Gilberto Gil — Palco",
+  "your_style": "Bossa nova & MPB",
+  "model_style": "Bossa nova & MPB",
+  "close_match_known": true,
+  "your_note": "Gal Tropical - Gal Costa",
+  "picks": [
+   "Robson Jorge & Lincoln Olivetti — Robson Jorge e Lincoln Olivetti [library] — Brazilian boogie and MPB with similarly polished 1980s funk-disco grooves.",
+   "Sandra de Sá — Vale Tudo [library] — Early-1980s Brazilian MPB with strong soul, funk and dance-pop energy.",
+   "Gal Costa — Gal Tropical [shelf] — Brazilian MPB with samba-rooted arrangements and a similarly accessible, groove-forward feel."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 35578378,
+  "record": "Rosalía — Lux",
+  "your_style": "Pop rock",
+  "model_style": "Pop rock",
+  "close_match_known": false,
+  "your_note": "",
+  "picks": [],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 16150880,
+  "record": "Joe Hisaishi — ハウルの動く城 サウンドトラック",
+  "your_style": "Anime music",
+  "model_style": "Anime music",
+  "close_match_known": true,
+  "your_note": "Original Soundtrack from Lupin III",
+  "picks": [
+   "Joe Hisaishi — 千と千尋の神隠し サウンドトラック [shelf] — Another Hisaishi Studio Ghibli score with similarly lush orchestration and emotionally vivid fantasy themes.",
+   "Joe Hisaishi, Royal Philharmonic Orchestra — A Symphonic Celebration (Music From The Studio Ghibli Films Of Hayao Miyazaki) [shelf] — Hisaishi’s symphonic Ghibli repertoire, closely matching the grand orchestral anime-score sound."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 13927171,
+  "record": "Alice Sara Ott — Nightfall",
+  "your_style": "Romantic & Impressionist classical",
+  "model_style": "Romantic & Impressionist classical",
+  "close_match_known": true,
+  "your_note": "Rachmaninoff for two, orphee - johan johannsson",
+  "picks": [
+   "François-Joël Thiollier — Debussy: Clair de Lune and Other Piano Favorites [library] — Debussy solo-piano repertoire and similarly intimate, coloristic Impressionist sound.",
+   "Anna Tsybuleva — The Complete Debussy Préludes pour solo piano [library] — A dedicated Debussy piano recital with closely related harmonic language and atmosphere.",
+   "Víkingur Ólafsson — Debussy – Rameau [library] — Includes Debussy’s piano music, offering a similarly refined modern reading of Impressionist color."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 31668683,
+  "record": "Juan Almeida — Fantasia",
+  "your_style": "Soul, funk & disco",
+  "model_style": "Salsa & Cuban",
+  "close_match_known": false,
+  "your_note": "",
+  "picks": [
+   "Ray Barretto — Acid (Remastered 2024) [library] — Latin dance grooves with funky, psychedelic-leaning production and Afro-Cuban roots.",
+   "Bobby Matos And The Combo Conquistadores — My Latin Soul [shelf] — Latin soul and Cuban-inflected funk sharing the record’s groove-led rare-groove character."
+  ],
+  "false_match": true,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 4637410,
+  "record": "Lamb — Fear Of Fours",
+  "your_style": "Trip hop & downtempo",
+  "model_style": "Trip hop & downtempo",
+  "close_match_known": true,
+  "your_note": "Moon Safari - AIR",
+  "picks": [
+   "Portishead — Dummy [library] — Portishead’s cinematic, beat-driven trip hop shares Lamb’s dark atmosphere and layered electronic production.",
+   "Portishead — Portishead [library] — A similarly moody, experimental trip-hop record with dense textures and soulful vocal presence.",
+   "Massive Attack — Mezzanine (Deluxe) [library] — Massive Attack’s shadowy, bass-heavy downtempo sound is a close match for Lamb’s electronic mood and rhythm programming."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 13424671,
+  "record": "Henryk Górecki Performed By Beth Gibbons And The Polish National Radio Symphony Orchestra Conducted By Krzysztof Penderecki — Symphony No. 3 \"Symphony Of Sorrowful Songs\" Op. 36",
+  "your_style": "20th-century classical",
+  "model_style": "20th-century classical",
+  "close_match_known": true,
+  "your_note": "Adagio for String - Samuel Barber",
+  "picks": [
+   "David Zinman, Dawn Upshaw & London Sinfonietta — Gorecki: Symphony No. 3 [library] — The same Górecki Symphony No. 3, offering the closest possible soprano-and-orchestra comparison in a different recording."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 6677077,
+  "record": "Gal Costa — Gal Tropical",
+  "your_style": "Bossa nova & MPB",
+  "model_style": "Bossa nova & MPB",
+  "close_match_known": true,
+  "your_note": "Elis and Tom - Elis Regina and Antonio Carlos Jobim",
+  "picks": [
+   "Caetano Veloso — Transa [shelf] — Caetano Veloso’s MPB shares Gal Costa’s tropical Brazilian songwriting, rhythmic sophistication, and adventurous late-1970s pop production.",
+   "Jorge Ben Jor — Força Bruta (feat. Trio Mocotó) [library] — Jorge Ben Jor’s samba-driven MPB has similarly buoyant grooves, percussive arrangements, and Brazilian-pop energy.",
+   "Maria Rita — Maria Rita [library] — Maria Rita’s vocal-led MPB draws on samba traditions with polished arrangements and a similarly direct Brazilian-pop feel."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "openai/gpt-5.6-luna",
+  "id": 397243,
+  "record": "Grinspoon — Pushing Buttons",
+  "your_style": "Alternative & indie rock",
+  "model_style": "Alternative & indie rock",
+  "close_match_known": false,
+  "your_note": "",
+  "picks": [
+   "Foo Fighters — Echoes, Silence, Patience & Grace [library] — Foo Fighters’ guitar-heavy post-grunge alternative rock is the closest match in energy and overall sound."
+  ],
+  "false_match": true,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 12596028,
+  "record": "E.S.T. — Seven Days Of Falling",
+  "your_style": "ECM & European contemporary jazz",
+  "model_style": "ECM & European contemporary jazz",
+  "close_match_known": true,
+  "your_note": "Seeing by Tord Gustavsen Trio",
+  "picks": [
+   "GoGo Penguin — v2.0 (Deluxe Edition) [library] — Acoustic piano trio with rock-tinged, groove-driven pulse, the closest heir to e.s.t.'s sound.",
+   "Bobo Stenson Quartet & Jan Garbarek — Witchi-Tai-To [library] — Nordic ECM-style quartet with spacious, lyrical interplay and a European chamber feel.",
+   "Gary Peacock, Keith Jarrett, Jack DeJohnette — Tales Of Another [shelf] — Lyrical ECM-style piano trio with airy, conversational interplay close to e.s.t.'s open phrasing."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 4864049,
+  "record": "Makoto Matsushita — First Light",
+  "your_style": "City pop & AOR",
+  "model_style": "City pop & AOR",
+  "close_match_known": true,
+  "your_note": "love trip by yakako mamiya",
+  "picks": [
+   "Tomoko Aran — Fuyu Kukan (+1) [2022 Restored Version] [library] — Tomoko Aran's 1983 Fuyu Kukan is a polished Japanese city pop record with the same glossy, late-70s/early-80s studio sound.",
+   "Miki Matsubara — Miki Matsubara Best Collection [library] — Miki Matsubara's Best Collection gathers 1979 city pop with smooth, funk-tinged production close to this record's sound.",
+   "Takako Mamiya — LOVE TRIP [library] — Takako Mamiya's 1982 LOVE TRIP is a glossy Japanese pop album of the same era and polished studio feel."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 1216425,
+  "record": "Donald Byrd — Royal Flush",
+  "your_style": "Hard bop, post-bop & soul-jazz",
+  "model_style": "Hard bop, post-bop & soul-jazz",
+  "close_match_known": true,
+  "your_note": "Stanly Turrenty - Hustlin",
+  "picks": [
+   "John Coltrane — Blue Train: The Complete Masters [shelf] — Coltrane's 1957 Blue Note hard bop session, same label and sextet-era bop sound as Byrd's date.",
+   "Art Blakey & The Jazz Messengers — Moanin' [library] — Art Blakey's Moanin' is a 1958 hard bop classic with the same driving, bluesy small-group swing.",
+   "Hank Mobley — No Room for Squares (The Rudy Van Gelder Edition Remastered) [library] — Hank Mobley's 1963 Blue Note session is a close hard bop quintet with the same polished, swinging feel."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 28753711,
+  "record": "Jiro Inagaki & Soul Media — Funky Stuff",
+  "your_style": "Jazz-funk & fusion",
+  "model_style": "Jazz-funk & fusion",
+  "close_match_known": true,
+  "your_note": "Cat by Hiroshi Suzuki",
+  "picks": [
+   "Sadao Watanabe — My Dear Life [shelf] — Japanese jazz-funk from 1977 with the same electric groove and funk-leaning fusion sound.",
+   "Hiroshi Suzuki — Cat [library] — Hiroshi Suzuki's 1976 Japanese jazz-funk album, close in era, groove and electric-jazz feel.",
+   "Hiroki Miyano — Manhattan Skyline [shelf] — Hiroki Miyano's 1981 Japanese jazz-funk record with a similar funk-jazz groove and keys-led sound."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 37926900,
+  "record": "Orquesta Akokán — América!",
+  "your_style": "Salsa & Cuban",
+  "model_style": "Salsa & Cuban",
+  "close_match_known": true,
+  "your_note": "Buena Vista Social Club",
+  "picks": [
+   "Orquesta Del Sol — Rainbow Love [shelf] — Modern salsa orquesta with bright brass and montuno-driven dance arrangements, close to Akokán's sound.",
+   "Willie Colón — Tiempo Pa' Matar [shelf] — Willie Colón's Fania-era trombone-led salsa, sharing the same mambo and boogaloo-influenced big-band approach.",
+   "Bobby Cruz & Ricardo Ray — El Bestial Sonido de [library] — Boogaloo-era salsa from 1971 with horn-driven dance arrangements, very close to Akokán's boogaloo side."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 34921262,
+  "record": "Alice Coltrane Featuring Pharoah Sanders — Journey In Satchidananda",
+  "your_style": "Free & spiritual jazz",
+  "model_style": "Free & spiritual jazz",
+  "close_match_known": true,
+  "your_note": "Bennie Maupin - The Jewel in The Lotus",
+  "picks": [
+   "Various Artists — Spiritual Jazz 3: Europe [library] — Spiritual Jazz compilation of devotional, modal and harp-tinged European spiritual jazz, close in mood and sound to Journey In Satchidananda."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 16030720,
+  "record": "Gabor Szabo — Dreams",
+  "your_style": "Free & spiritual jazz",
+  "model_style": "Other/uncertain",
+  "close_match_known": true,
+  "your_note": "Matchbox - Gary Burton & Ralph Tower",
+  "picks": [],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 2499163,
+  "record": "Chick Corea — Return To Forever",
+  "your_style": "ECM & European contemporary jazz",
+  "model_style": "Jazz-funk & fusion",
+  "close_match_known": true,
+  "your_note": "Matchbox - Gary Burton & Ralph Tower",
+  "picks": [
+   "Casiopea — Super Flight [shelf] — Japanese electric fusion from 1982 with tight funk-rock grooves and bright keyboard-led ensemble playing, close in sound to Corea's fusion.",
+   "Masayoshi Takanaka — T-Wave [shelf] — Masayoshi Takanaka's 1980 fusion album with electric guitar and synth-driven melodic jazz-rock, a close match in electric fusion sound.",
+   "Herbie Mann — Mississippi Gambler [shelf] — Herbie Mann's 1972 electric jazz-funk record with Latin and funk rhythms and electric keyboard colour, similar to Return to Forever's fusion approach."
+  ],
+  "false_match": true,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 35896225,
+  "record": "Takuro Okada — Konoma",
+  "your_style": "Other/uncertain",
+  "model_style": "Jazz-funk & fusion",
+  "close_match_known": true,
+  "your_note": "Fukushima - Sinsuke Fujieda Group",
+  "picks": [
+   "Hiromi's Sonicwonder — Out There [shelf] — Recent Japanese electric jazz-fusion with funk-driven grooves and a modern, polished band sound, close to the fusion side of this record.",
+   "Isao Suzuki Quartet — Orang-Utan [shelf] — 2024 Japanese jazz-funk quartet record with electric-leaning grooves and contemporary production, a plausible match for the fusion sound."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 4933286,
+  "record": "Minoru Muraoka — Bamboo",
+  "your_style": "Other/uncertain",
+  "model_style": "Jazz-funk & fusion",
+  "close_match_known": true,
+  "your_note": "In the groove - Jiro Inagaki and his Sould media, Doroty Ashby - Hip Harp",
+  "picks": [],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 7564034,
+  "record": "St Germain — St Germain",
+  "your_style": "House-jazz",
+  "model_style": "House-jazz",
+  "close_match_known": true,
+  "your_note": "st germain - tourist",
+  "picks": [
+   "St Germain — Tourist [shelf] — Same artist's Tourist album, with the same relaxed house-jazz blend of live-sounding jazz textures and deep-house grooves.",
+   "St Germain — Tourist (Remastered) [Deluxe Version] [library] — St Germain's Tourist, the same house-jazz sound with the same warm, mellow club grooves."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 1294400,
+  "record": "Gilberto Gil — Palco",
+  "your_style": "Bossa nova & MPB",
+  "model_style": "Bossa nova & MPB",
+  "close_match_known": true,
+  "your_note": "Gal Tropical - Gal Costa",
+  "picks": [
+   "Gal Costa — Gal Tropical [shelf] — Late-1970s Brazilian MPB pop with glossy, funk-tinged arrangements, close to Gil's early-80s sound.",
+   "Robson Jorge & Lincoln Olivetti — Robson Jorge e Lincoln Olivetti [library] — 1982 Brazilian MPB collaboration with a similar pop-leaning, groove-based sound from the same era.",
+   "Jorge Ben Jor — Força Bruta (feat. Trio Mocotó) [library] — Jorge Ben Jor's samba-funk MPB with a rhythmic, funky feel that sits near Gil's grooves."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 35578378,
+  "record": "Rosalía — Lux",
+  "your_style": "Pop rock",
+  "model_style": "Pop rock",
+  "close_match_known": false,
+  "your_note": "",
+  "picks": [
+   "ROSALÍA — LUX [library] — Same artist's Rosalía work with the same mix of pop, Latin and experimental textures, though a different album.",
+   "RAYE — THIS MUSIC MAY CONTAIN HOPE. [library] — RAYE's 2026 pop record is a mainstream pop-leaning cousin, but it is not close enough in sound to be a true match."
+  ],
+  "false_match": true,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 16150880,
+  "record": "Joe Hisaishi — ハウルの動く城 サウンドトラック",
+  "your_style": "Anime music",
+  "model_style": "Anime music",
+  "close_match_known": true,
+  "your_note": "Original Soundtrack from Lupin III",
+  "picks": [
+   "Joe Hisaishi — 千と千尋の神隠し サウンドトラック [shelf] — Same composer and Studio Ghibli orchestral score sound, from Spirited Away.",
+   "Joe Hisaishi, Royal Philharmonic Orchestra — A Symphonic Celebration (Music From The Studio Ghibli Films Of Hayao Miyazaki) [shelf] — Hisaishi's Ghibli film themes rearranged for full orchestra, close in melody and texture.",
+   "Joe Hisaishi — Kikujiro (Original Motion Picture Soundtrack) [library] — Hisaishi's melodic piano-and-orchestra film score with the same warm, gentle sound."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 13927171,
+  "record": "Alice Sara Ott — Nightfall",
+  "your_style": "Romantic & Impressionist classical",
+  "model_style": "Romantic & Impressionist classical",
+  "close_match_known": true,
+  "your_note": "Rachmaninoff for two, orphee - johan johannsson",
+  "picks": [
+   "Anna Tsybuleva — The Complete Debussy Préludes pour solo piano [library] — Solo piano performance of Debussy's Préludes, the same Impressionist repertory and intimate piano sound.",
+   "François-Joël Thiollier — Debussy: Clair de Lune and Other Piano Favorites [library] — Solo piano Debussy favourites such as Clair de Lune, close in mood and pianistic colour.",
+   "Khatia Buniatishvili — Liszt: Sonata in B Minor, Liebestraum [library] — Solo Romantic piano recital by a concert pianist, with Liszt's dark lyricism close to Nightfall's nocturnal feel."
+  ],
+  "false_match": true,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 31668683,
+  "record": "Juan Almeida — Fantasia",
+  "your_style": "Soul, funk & disco",
+  "model_style": "Salsa & Cuban",
+  "close_match_known": false,
+  "your_note": "",
+  "picks": [
+   "Afro Cuban All Stars — A Toda Cuba Le Gusta [library] — Cuban son and Afro-Cuban rhythms led by the song, close in its Cuban dance-band sound.",
+   "Celia Cruz — Son Con Guaguancó [shelf] — Classic Cuban son and guaguancó led by clave and voice, close to the Afro-Cuban core of the record."
+  ],
+  "false_match": true,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 4637410,
+  "record": "Lamb — Fear Of Fours",
+  "your_style": "Trip hop & downtempo",
+  "model_style": "Trip hop & downtempo",
+  "close_match_known": true,
+  "your_note": "Moon Safari - AIR",
+  "picks": [
+   "Portishead — Dummy [library] — Portishead's Dummy shares the same vocal-over-moody-beats trip hop sound, with lush, sparse production.",
+   "Massive Attack — Mezzanine (Deluxe) [library] — Massive Attack's Mezzanine is the same Bristol trip hop style, with dark downtempo grooves and atmospheric textures close to Lamb's.",
+   "Portishead — Portishead [library] — Portishead's 1997 self-titled album carries the same cinematic, vocal-led trip hop mood as Fear of Fours."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 13424671,
+  "record": "Henryk Górecki Performed By Beth Gibbons And The Polish National Radio Symphony Orchestra Conducted By Krzysztof Penderecki — Symphony No. 3 \"Symphony Of Sorrowful Songs\" Op. 36",
+  "your_style": "20th-century classical",
+  "model_style": "20th-century classical",
+  "close_match_known": true,
+  "your_note": "Adagio for String - Samuel Barber",
+  "picks": [
+   "David Zinman, Dawn Upshaw & London Sinfonietta — Gorecki: Symphony No. 3 [library] — Same Górecki Symphony No. 3 with Dawn Upshaw and London Sinfonietta under Zinman, the closest possible match in work and sound.",
+   "Caroline Shaw / Attacca Quartet — Evergreen [shelf] — Caroline Shaw's Evergreen is a contemporary quartet with slow, minimal textures close to Górecki's spare, sustained style."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 6677077,
+  "record": "Gal Costa — Gal Tropical",
+  "your_style": "Bossa nova & MPB",
+  "model_style": "Bossa nova & MPB",
+  "close_match_known": true,
+  "your_note": "Elis and Tom - Elis Regina and Antonio Carlos Jobim",
+  "picks": [
+   "Sandra de Sá — Vale Tudo [library] — Brazilian MPB from the early 1980s with the same glossy, pop-leaning arrangements and female vocal focus.",
+   "Robson Jorge & Lincoln Olivetti — Robson Jorge e Lincoln Olivetti [library] — Early-1980s Brazilian MPB built on smooth, keyboard-coloured pop arrangements, close to Gal Tropical's late-70s sound.",
+   "Caetano Veloso — Transa [shelf] — Caetano Veloso's Transa is Brazilian MPB from the same tropicalia-rooted tradition, with a similar warm, intimate vocal approach."
+  ],
+  "false_match": false,
+  "needs_review": false
+ },
+ {
+  "model": "anthropic/claude-haiku-5.5",
+  "id": 397243,
+  "record": "Grinspoon — Pushing Buttons",
+  "your_style": "Alternative & indie rock",
+  "model_style": "Alternative & indie rock",
+  "close_match_known": false,
+  "your_note": "",
+  "picks": [
+   "Foo Fighters — Echoes, Silence, Patience & Grace [library] — Foo Fighters' 2007 album shares the 90s-rooted, riff-driven alternative rock sound with big, anthemic hooks."
+  ],
+  "false_match": true,
+  "needs_review": false
+ }
+]

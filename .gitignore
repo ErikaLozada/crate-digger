@@ -10,3 +10,8 @@ __pycache__/
 
 # Generated outputs
 crate-digger-phase0.html
+
+# Local data: personal exports, downloads, run outputs. Only the labels and reviews are tracked.
+data/*
+!data/eval_set.json
+!data/review*.json
