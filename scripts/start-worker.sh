@@ -25,9 +25,10 @@ if [ "${HERDR_ENV:-}" != 1 ]; then
   echo "Not inside herdr: start it yourself with:  cd $WT && $KIND ${ARGS[*]}"; exit 0
 fi
 if [ -n "$DRY" ]; then
-  echo "herdr pane split --current --direction right --cwd $WT --no-focus"
+  echo "herdr pane split ${SPLIT_PANE:+--pane $SPLIT_PANE}$([ -z "$SPLIT_PANE" ] && echo --current) --direction right --cwd $WT --no-focus"
   run herdr agent start "$NAME" --kind "$KIND" --pane '<new pane>' -- "${ARGS[@]}"; exit 0
 fi
-PANE="$(herdr pane split --current --direction right --cwd "$WT" --no-focus | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['pane']['pane_id'])")"
-herdr agent start "$NAME" --kind "$KIND" --pane "$PANE" --timeout 60000 -- "${ARGS[@]}" >/dev/null
+PANE="$(herdr pane split ${SPLIT_PANE:+--pane "$SPLIT_PANE"} $([ -z "$SPLIT_PANE" ] && echo --current) --direction right --cwd "$WT" --no-focus | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['pane']['pane_id'])")"
+herdr agent start "$NAME" --kind "$KIND" --pane "$PANE" --timeout 60000 -- "${ARGS[@]}" >/dev/null \
+  || echo "Worker $NAME started but is not ready: it may be waiting for an approval in pane $PANE"
 echo "Worker $NAME ($KIND) in pane $PANE, folder $WT. Brief it: herdr agent prompt $NAME \"...\" --wait"
