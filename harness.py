@@ -18,7 +18,7 @@ import library, styles
 from check_models import PRIMARY, FALLBACK, api_key, chat
 
 TIMEOUT = 20
-FAMILIES = list(styles.FAMILIES) + ['Other/uncertain']
+FAMILIES = list(styles.FAMILIES) + styles.NAMED_ONLY + ['Other/uncertain']
 SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['sentence', 'style', 'picks'], 'properties': {
     'sentence': {'type': 'string'},
     'style': {'type': 'string', 'enum': FAMILIES},
