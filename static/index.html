@@ -394,14 +394,16 @@ function ownership(o) {
 
 function connections(links) {
   const rows = [];
-  for (const kind of ['musicians', 'producers', 'labels']) {
+  for (const kind of ['artists', 'musicians', 'producers', 'labels']) {
     for (const entry of links?.[kind] || []) {
-      const title = kind === 'producers' ? `Produced by ${entry.name}`
+      const title = kind === 'artists' ? `More by ${entry.name}` : kind === 'producers' ? `Produced by ${entry.name}`
         : kind === 'musicians' && entry.role ? `${entry.name} · ${entry.role}` : entry.name;
       const records = entry.records.map(r => `<a href="#/release/${esc(encodeURIComponent(r.id))}">${esc(r.title)}</a>`).join(', ');
       const extra = entry.count > entry.records.length ? ` and ${esc(entry.count - entry.records.length)} more` : '';
       const first = entry.records[0];
-      const subtitle = kind === 'labels' ? `${esc(plural(entry.count, 'record'))} you own: ${records}${extra}`
+      const subtitle = kind === 'artists' && entry.count === 1 && first
+        ? `${records}${first.year != null && first.year !== '' ? ` (${esc(first.year)})` : ''}`
+        : kind === 'artists' || kind === 'labels' ? `${esc(plural(entry.count, 'record'))} you own: ${records}${extra}`
         : entry.count === 1 && first ? `on ${records} (${esc([first.artist, first.year].filter(v => v != null && v !== '').join(', '))})`
         : `on ${esc(plural(entry.count, 'record'))}: ${records}${extra}`;
       const icon = kind === 'labels' ? I.disc : kind === 'producers' ? I.stack : I.note;
