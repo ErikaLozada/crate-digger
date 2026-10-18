@@ -105,6 +105,14 @@ button.row:active, a.row:active { background: var(--cell-press); }
 .pill.blue { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); }
 .pill.tint { background: var(--tint-soft); color: var(--tint); }
 .banner { font-size: 15px; background: color-mix(in srgb, var(--orange) 16%, transparent); color: var(--label); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; }
+.textbtn { background: none; border: 0; color: var(--tint); font: inherit; font-size: 17px; padding: 0 0 0 12px; cursor: pointer; }
+.decide { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 16px; }
+.dbtn { height: 50px; border: 0; border-radius: 12px; background: var(--fill); color: var(--label); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.dbtn:active { opacity: .6; }
+.dbtn:disabled { opacity: .4; }
+.dbtn.buy { background: var(--green); color: #fff; }
+.dbtn.explore { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); }
+.dbtn.want { background: color-mix(in srgb, var(--orange) 16%, transparent); color: var(--orange); }
 
 /* record header */
 .hero { text-align: center; padding: 8px 0 20px; }
@@ -434,6 +442,7 @@ async function card(id) {
     <div class="chips" id="links"></div>
     <div class="section-h"><h2>Price &amp; Market</h2></div>
     <div class="group" id="price">${sk(2)}</div>
+    <div id="decide"></div>
     <p class="attrib" id="attrib"></p>
   </div>`;
   let r;
@@ -464,6 +473,7 @@ async function card(id) {
       <div><b>${m.want ?? '–'}</b><small>Want it</small></div>
       <div><b>${m.for_sale ?? '–'}</b><small>For sale</small></div>
     </div>`;
+  decisions(id, r, current);
 
   loadPicks(id, r, current);
   loadSamples(id, current);
@@ -527,6 +537,62 @@ async function loadSamples(id, current) {
     if (a.paused) { a.play(); b.innerHTML = I.pause; } else { a.pause(); reset(b); }
     a.onended = () => reset(b);
   });
+}
+
+// ---------------------------------------------------------------- decisions (the dig history, saved on the server)
+const DONE = {buy: 'Bought on', pass: 'Passed on', explore: 'Saved to explore on', wishlist: 'Wishlisted on'};
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dayOf = iso => { const [, m, d] = iso.slice(0, 10).split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; };
+const JSON_TYPE = {'Content-Type': 'application/json'};
+
+function decisions(id, r, current, {error = '', price = ''} = {}) {
+  const el = $('#decide'), d = r.decision;
+  const banner = error ? `<div class="banner">${esc(error)}</div>` : '';
+  if (d) {
+    el.innerHTML = `${banner}<div class="group"><div class="row"><div class="grow t">${esc(DONE[d.action])} ${esc(dayOf(d.date))}</div>
+      <button class="textbtn" id="undo">Undo</button></div></div>`;
+    $('#undo').onclick = () => act(id, r, current, 'Undoing…', `/api/decision/${d.id}`, {method: 'DELETE', headers: JSON_TYPE});
+    return;
+  }
+  const send = (action, busy, extra = {}) => {
+    const sticker = $('#sticker').value.trim() || null;
+    return act(id, r, current, busy, `/api/decision/${id}`, {method: 'POST', headers: JSON_TYPE,
+      body: JSON.stringify({action, price: sticker, ...extra})}, sticker || '');
+  };
+  el.innerHTML = `${banner}
+    <div class="group"><div class="field"><label for="sticker">Price</label>
+      <input id="sticker" type="text" inputmode="decimal" placeholder="Sticker price, optional" value="${esc(price)}"></div></div>
+    <div class="decide">
+      ${r.own?.kind === 'same' ? '' : '<button class="dbtn buy" id="buy">Buy</button>'}
+      <button class="dbtn" id="pass">Pass</button>
+      <button class="dbtn explore" id="explore">Explore later</button>
+      ${r.wanted ? '' : '<button class="dbtn want" id="wishlist">Wishlist</button>'}
+    </div>
+    <div id="exploreform"></div>`;
+  const buy = $('#buy'), wishlist = $('#wishlist');
+  if (buy) buy.onclick = () => send('buy', 'Adding to your collection…');
+  if (wishlist) wishlist.onclick = () => send('wishlist', 'Adding to your wantlist…');
+  $('#pass').onclick = () => send('pass', 'Saving…');
+  $('#explore').onclick = () => {
+    const form = $('#exploreform');
+    if (form.innerHTML) { form.innerHTML = ''; return; }
+    const tracks = r.tracks || [];
+    form.innerHTML = `<div class="group" style="--inset:58px; margin-top:12px">
+        <div class="field"><label for="note">Note</label><input id="note" type="text" placeholder="Why it is worth a listen"></div>
+        ${tracks.map((t, i) => `<label class="row"><input type="checkbox" id="tr-${i}"><span class="t wrap">${esc(t)}</span></label>`).join('')}
+      </div>
+      <button class="btn" id="save">Save</button>`;
+    $('#save').onclick = () => send('explore', 'Saving…', {
+      note: $('#note').value.trim(), tracks: tracks.filter((_, i) => $('#tr-' + i).checked)});
+  };
+}
+
+// A write reloads the card on success. A late answer may only change the card that sent it.
+async function act(id, r, current, busy, path, opts, price = '') {
+  $('#decide').innerHTML = `<div class="group"><div class="row">${I.spinner}<div class="grow s">${esc(busy)}</div></div></div>`;
+  try { await api(path, opts); }
+  catch (e) { if (current()) decisions(id, r, current, {error: e.message, price}); return; }
+  if (current()) card(id);
 }
 
 // ---------------------------------------------------------------- routing
