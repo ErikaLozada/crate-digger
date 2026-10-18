@@ -140,6 +140,21 @@ button.row:active, a.row:active { background: var(--cell-press); }
 .sentence { font-size: 15px; color: var(--label2); padding: 12px 16px; border-bottom: .5px solid var(--sep); }
 .attrib { font-size: 12px; color: var(--label2); text-align: center; margin: 0 0 8px; }
 
+/* live barcode scanner */
+.scanner { position: fixed; inset: 0; z-index: 50; background: #000; color: #fff; animation: in .2s ease-out; }
+.scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scan-frame { position: absolute; left: 50%; top: 42%; width: min(82vw, 360px); height: min(44vw, 190px); transform: translate(-50%, -50%);
+  border-radius: 18px; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .55); border: 2px solid rgba(255, 255, 255, .9); overflow: hidden; }
+.scan-frame::after { content: ""; position: absolute; left: 8%; right: 8%; height: 2px; top: 50%; background: var(--tint); box-shadow: 0 0 12px var(--tint);
+  animation: sweep 1.8s ease-in-out infinite alternate; }
+@keyframes sweep { from { top: 18%; } to { top: 82%; } }
+.scan-top { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top) + 8px) 12px 8px; display: flex; justify-content: space-between; align-items: center; }
+.scan-top button, .scan-bottom button { background: rgba(60, 60, 67, .55); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border: 0; color: #fff; font: inherit; font-size: 17px; font-weight: 600; border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.scan-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 16px calc(env(safe-area-inset-bottom) + 24px); text-align: center; }
+.scan-bottom p { margin: 0 0 16px; font-size: 17px; font-weight: 600; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+@media (prefers-reduced-motion: reduce) { .scan-frame::after { animation: none; } }
+
 /* loading */
 .skel { background: var(--fill); border-radius: 5px; height: 12px; margin: 5px 0; animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .45; } }
@@ -159,6 +174,12 @@ button.row:active, a.row:active { background: var(--cell-press); }
   </div>
 </nav>
 <main class="page" id="app"></main>
+<div class="scanner hidden" id="scanner" role="dialog" aria-label="Scan barcode">
+  <video id="scanvideo" playsinline muted autoplay></video>
+  <div class="scan-frame" aria-hidden="true"></div>
+  <div class="scan-top"><button id="scancancel">Cancel</button></div>
+  <div class="scan-bottom"><p id="scanstatus">Point the camera at the barcode</p><button id="scanphoto">Take a Photo Instead</button></div>
+</div>
 
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js" defer></script>
 <script>
@@ -222,9 +243,9 @@ function home(msg) {
     app.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === tab));
     const f = $('#f');
     if (tab === 'barcode') f.innerHTML = `
-      <label class="btn" for="photo">${I.camera}Scan Barcode</label>
+      <button class="btn" type="button" id="scan">${I.camera}Scan Barcode</button>
       <input id="photo" type="file" accept="image/*" capture="environment" class="hidden">
-      <p class="hint" id="scanmsg">Fill the frame with the barcode, held flat.</p>
+      <p class="hint" id="scanmsg">Hold the barcode flat inside the frame.</p>
       <div class="search">${I.search}<input id="v" type="search" inputmode="numeric" enterkeyhint="search" placeholder="Or type the barcode digits"></div>`;
     else if (tab === 'catno') f.innerHTML = `
       <div class="search">${I.search}<input id="v" type="search" autocapitalize="characters" enterkeyhint="search" placeholder="Catalogue number, e.g. BEWITH020LP"></div>
@@ -236,6 +257,7 @@ function home(msg) {
       </div>
       <button class="btn" type="submit">Search</button>`;
     const photo = $('#photo'); if (photo) photo.onchange = () => decodePhoto(photo.files[0]);
+    const scan = $('#scan'); if (scan) scan.onclick = startScan;
   };
   app.querySelectorAll('.seg button').forEach(b => b.onclick = () => { tab = b.dataset.t; draw(); });
   $('#f').onsubmit = e => {
@@ -261,6 +283,43 @@ function drawRecent() {
     : `<div class="group"><div class="row"><div class="grow s" style="color:var(--label2);font-size:15px">Records you look up will appear here.</div></div></div>`}`;
   const c = $('#clear'); if (c) c.onclick = () => { try { localStorage.removeItem(RECENT); } catch (e) {} drawRecent(); };
 }
+
+// Live camera scanning needs HTTPS (or localhost); without it, or without permission, use the photo picker.
+let reader = null;
+const barcodeReader = () => {
+  const hints = new Map();
+  const F = ZXing.BarcodeFormat;
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E]);
+  return new ZXing.BrowserMultiFormatReader(hints, 250);
+};
+async function startScan() {
+  const msg = $('#scanmsg');
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return $('#photo').click();
+  if (!window.ZXing) { msg.textContent = 'The barcode reader is still loading. Try again in a moment.'; return; }
+  $('#scanstatus').textContent = 'Point the camera at the barcode';
+  $('#scanner').classList.remove('hidden');
+  reader = barcodeReader();
+  try {
+    await reader.decodeFromConstraints({video: {facingMode: {ideal: 'environment'}, width: {ideal: 1280}, height: {ideal: 720}}},
+      $('#scanvideo'), res => {
+        if (!res || !reader) return;
+        const code = res.getText();
+        stopScan();
+        location.hash = `#/search/barcode/${encodeURIComponent(code)}`;
+      });
+  } catch (e) {
+    stopScan();
+    msg.textContent = e && e.name === 'NotAllowedError'
+      ? 'Camera access is off. Allow it in Settings → Safari → Camera, or take a photo instead.'
+      : 'The camera could not start. Take a photo of the barcode instead.';
+  }
+}
+function stopScan() {
+  if (reader) { reader.reset(); reader = null; }
+  $('#scanner').classList.add('hidden');
+}
+$('#scancancel').onclick = stopScan;
+$('#scanphoto').onclick = () => { stopScan(); $('#photo').click(); };
 
 async function decodePhoto(file) {
   if (!file) return;
@@ -432,6 +491,7 @@ async function loadSamples(id) {
 // ---------------------------------------------------------------- routing
 function route() {
   const [, view, a, b] = location.hash.split('/');
+  stopScan();
   window.scrollTo(0, 0);
   if (view === 'search') return editions(a, decodeURIComponent(b || ''));
   if (view === 'release') return card(a);
