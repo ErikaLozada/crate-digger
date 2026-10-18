@@ -149,6 +149,34 @@ def link(t, o):
     out['key'] = key
     return out
 
+def shelf_links(t, shelf):
+    """Who and what t shares with the shelf: musicians, producers and labels, each with the shelf albums named.
+    Each album counts once, however many editions of it you own; t itself and other editions of it are left out."""
+    mus, prod, lab = {}, {}, {}
+    tp = {**{i: None for i in t.main}, **t.players}
+    for o in shelf:
+        if o.id == t.id or (t.master and o.master == t.master): continue
+        a = o.master or ('r', o.id)
+        op = {**{i: None for i in o.main}, **o.players}
+        for i in tp:
+            if i in op and not (i in t.main and i in o.main):
+                e = mus.setdefault(i, {'name': t.names.get(i) or o.names.get(i) or '', 'role': (t.players.get(i) or [''])[0], 'lead': False, 'recs': {}})
+                e['lead'] |= i in t.main or i in o.main
+                e['role'] = e['role'] or (o.players.get(i) or [''])[0]
+                e['recs'].setdefault(a, o)
+        for i, n in t.producers.items():
+            if i in o.producers: prod.setdefault(i, {'name': n, 'recs': {}})['recs'].setdefault(a, o)
+        for i, n in t.labels.items():
+            if i in o.labels and is_specific(n): lab.setdefault(i, {'name': n, 'recs': {}})['recs'].setdefault(a, o)
+    def entry(e):
+        recs = sorted(e['recs'].values(), key=lambda o: (o.oyear is None, o.oyear or 0, o.artist, o.title))[:3]
+        return {'name': e['name'], **({'role': e['role'] or ''} if 'role' in e else {}), 'count': len(e['recs']),
+                'records': [{'id': o.id, 'artist': o.artist, 'title': o.title, 'year': o.oyear} for o in recs]}
+    order = lambda es, lead=False: sorted(es, key=lambda e: (-(lead and e['lead']), -len(e['recs']), e['name']))
+    return {'musicians': [entry(e) for e in order(mus.values(), True)[:6]],
+            'producers': [entry(e) for e in order(prod.values())[:3]],
+            'labels': [entry(e) for e in order(lab.values())[:2]]}
+
 def reason_text(t, o, l):
     parts = []
     if l['artist']: parts.append('Same artist: ' + ', '.join(l['artist'][:2]))

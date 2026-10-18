@@ -167,7 +167,7 @@ def release(rid):
             'image': (raw.get('images') or [{}])[0].get('uri') or raw.get('thumb'),
             'style': t.family, 'own': own, 'facts': res['facts'], 'territory': res['territory'], 'why': res['why'],
             'market': {'low': rel['lowest_price'], 'have': rel['have'], 'want': rel['want'], 'for_sale': rel['num_for_sale']},
-            'videos': rel['videos'][:3], 'uri': rel['uri'], 'tracks': rel['tracks']}
+            'videos': rel['videos'][:3], 'uri': rel['uri'], 'tracks': rel['tracks'], 'links': engine.shelf_links(t, SHELF)}
 
 def samples(rid):
     raw, m, live = fetch_release(rid)
