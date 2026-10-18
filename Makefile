@@ -1,5 +1,5 @@
 # Commands for people and agents alike; see AGENTS.md.
-.PHONY: test report status deploy setup task finish worker
+.PHONY: test report status deploy setup task finish worker replay replay-clean
 
 test:
 	python3 -W ignore::ResourceWarning -m unittest discover tests   # the code reads with json.load(open(...)) throughout
@@ -26,3 +26,9 @@ finish:
 
 worker:
 	@bash scripts/start-worker.sh "$(NAME)" "$(KIND)" "$(OWNER)" "$(MODEL)" "$(EFFORT)"
+
+replay:
+	@bash scripts/replay.sh "$(TASK)" "$(KIND)" "$(MODEL)" "$(EFFORT)"
+
+replay-clean:
+	@bash scripts/replay.sh clean "$(RUN)"

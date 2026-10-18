@@ -1,0 +1,279 @@
+{
+ "1216425": {
+  "artists": [],
+  "labels": [
+   {
+    "count": 10,
+    "name": "Blue Note",
+    "records": [
+     {
+      "artist": "Jutta Hipp With Zoot Sims",
+      "id": 3820432,
+      "title": "Jutta Hipp With Zoot Sims",
+      "year": 1957
+     },
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     }
+    ]
+   }
+  ],
+  "musicians": [
+   {
+    "count": 1,
+    "name": "Billy Higgins",
+    "records": [
+     {
+      "artist": "Lee Morgan",
+      "id": 7925345,
+      "title": "The Sidewinder",
+      "year": 1964
+     }
+    ],
+    "role": "Drums"
+   },
+   {
+    "count": 1,
+    "name": "Herbie Hancock",
+    "records": [
+     {
+      "artist": "Wayne Shorter",
+      "id": 31430060,
+      "title": "Speak No Evil",
+      "year": 1966
+     }
+    ],
+    "role": "Piano"
+   }
+  ],
+  "producers": [
+   {
+    "count": 6,
+    "name": "Alfred Lion",
+    "records": [
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     },
+     {
+      "artist": "Jimmy Smith With Stanley Turrentine",
+      "id": 15966924,
+      "title": "Prayer Meetin'",
+      "year": 1964
+     }
+    ]
+   }
+  ]
+ },
+ "1710836": {
+  "artists": [
+   {
+    "count": 5,
+    "name": "Berliner Philharmoniker",
+    "records": [
+     {
+      "artist": "Herbert Von Karajan, Johannes Brahms, Berliner Philharmoniker",
+      "id": 15697644,
+      "title": "Symphonie Nr. 4",
+      "year": 1965
+     },
+     {
+      "artist": "Johannes Brahms, Herbert von Karajan, Berliner Philharmoniker",
+      "id": 2292742,
+      "title": "Symphonie Nr. 3 • Haydn-Variationen",
+      "year": 1965
+     },
+     {
+      "artist": "Franz von Suppé - Berliner Philharmoniker, Herbert von Karajan",
+      "id": 7506760,
+      "title": "Ouvertüren - Leichte Kavallerie·Pique Dame·Die Schöne Galathée·Dichter Und Bauer U.A.",
+      "year": 1980
+     }
+    ]
+   },
+   {
+    "count": 5,
+    "name": "Herbert von Karajan",
+    "records": [
+     {
+      "artist": "Richard Strauss, Wiener Philharmoniker, Herbert von Karajan",
+      "id": 7633364,
+      "title": "Also Sprach Zarathustra   Op. 30",
+      "year": 1959
+     },
+     {
+      "artist": "Herbert Von Karajan, Johannes Brahms, Berliner Philharmoniker",
+      "id": 15697644,
+      "title": "Symphonie Nr. 4",
+      "year": 1965
+     },
+     {
+      "artist": "Johannes Brahms, Herbert von Karajan, Berliner Philharmoniker",
+      "id": 2292742,
+      "title": "Symphonie Nr. 3 • Haydn-Variationen",
+      "year": 1965
+     }
+    ]
+   }
+  ],
+  "labels": [
+   {
+    "count": 12,
+    "name": "Deutsche Grammophon",
+    "records": [
+     {
+      "artist": "Herbert Von Karajan, Johannes Brahms, Berliner Philharmoniker",
+      "id": 15697644,
+      "title": "Symphonie Nr. 4",
+      "year": 1965
+     },
+     {
+      "artist": "Johannes Brahms, Herbert von Karajan, Berliner Philharmoniker",
+      "id": 2292742,
+      "title": "Symphonie Nr. 3 • Haydn-Variationen",
+      "year": 1965
+     },
+     {
+      "artist": "Carl Orff, Herbert von Karajan",
+      "id": 1495386,
+      "title": "De Temporum Fine Comoedia",
+      "year": 1974
+     }
+    ]
+   }
+  ],
+  "musicians": [],
+  "producers": []
+ },
+ "8238279": {
+  "artists": [
+   {
+    "count": 4,
+    "name": "Stanley Turrentine",
+    "records": [
+     {
+      "artist": "Jimmy Smith With Stanley Turrentine",
+      "id": 15966924,
+      "title": "Prayer Meetin'",
+      "year": 1964
+     },
+     {
+      "artist": "Stanley Turrentine",
+      "id": 14098396,
+      "title": "Hustlin'",
+      "year": 1965
+     },
+     {
+      "artist": "Stanley Turrentine Featuring Shirley Scott",
+      "id": 24884279,
+      "title": "Common Touch",
+      "year": 1968
+     }
+    ]
+   }
+  ],
+  "labels": [
+   {
+    "count": 9,
+    "name": "Blue Note",
+    "records": [
+     {
+      "artist": "Jutta Hipp With Zoot Sims",
+      "id": 3820432,
+      "title": "Jutta Hipp With Zoot Sims",
+      "year": 1957
+     },
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Jimmy Smith With Stanley Turrentine",
+      "id": 15966924,
+      "title": "Prayer Meetin'",
+      "year": 1964
+     }
+    ]
+   }
+  ],
+  "musicians": [
+   {
+    "count": 2,
+    "name": "Shirley Scott",
+    "records": [
+     {
+      "artist": "Stanley Turrentine",
+      "id": 14098396,
+      "title": "Hustlin'",
+      "year": 1965
+     },
+     {
+      "artist": "Stanley Turrentine Featuring Shirley Scott",
+      "id": 24884279,
+      "title": "Common Touch",
+      "year": 1968
+     }
+    ],
+    "role": "Organ"
+   },
+   {
+    "count": 1,
+    "name": "Sam Jones",
+    "records": [
+     {
+      "artist": "Bill Evans",
+      "id": 12989331,
+      "title": "Everybody Digs Bill Evans",
+      "year": 1959
+     }
+    ],
+    "role": "Bass"
+   }
+  ],
+  "producers": [
+   {
+    "count": 5,
+    "name": "Alfred Lion",
+    "records": [
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Jimmy Smith With Stanley Turrentine",
+      "id": 15966924,
+      "title": "Prayer Meetin'",
+      "year": 1964
+     },
+     {
+      "artist": "Lee Morgan",
+      "id": 7925345,
+      "title": "The Sidewinder",
+      "year": 1964
+     }
+    ]
+   }
+  ]
+ }
+}

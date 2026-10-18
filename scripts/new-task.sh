@@ -26,6 +26,9 @@ Status: working
 Branch: $NAME
 Port: $PORT
 Lead: none (make worker fills this in)
+Base: $(git rev-parse --short main)
+Scope: (files this task may change, space-separated; checked when the task is replayed)
+Check: (optional: release ids whose links output must match on replay)
 
 ## Goal
 (what done looks like, and the requirement or decision it serves)

@@ -13,6 +13,7 @@ A private web app for deciding on a record in a shop: scan it, see whether you o
 | `make setup` | Once per clone: turns on the git hooks in `.githooks/` |
 | `make task NAME=x OWNER=y` | New branch and sibling worktree for a task, data linked in, own test port, `TASK.md` to fill in |
 | `make finish NAME=x` | Removes a task's worktree and branch once merged |
+| `make replay TASK=x KIND=codex\|claude MODEL= EFFORT=` | Replays an archived task (`docs/tasks/`) with a chosen model and grades it against the reviewed result; results in `docs/tasks/replays.md` |
 | `make worker NAME=x KIND=codex\|claude` | A task worktree plus a worker agent in a herdr pane beside you, with worker permissions |
 
 Skills (in `.agents/skills/`, shared by Claude, Codex and pi): `ship-feature` for any code change, `run-eval` for an evaluation round.
@@ -55,6 +56,7 @@ Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.con
 - One lead owns `main`, merges and `make deploy`. Others do not restart the live service.
 - Shared files have one writer at a time: `data/eval_set.json` (the user), the review files, `data/recommendations.json` (the server).
 - Message peers before touching shared state, and when a branch is ready.
+- Choosing worker models: a cheaper model or lower effort is used for a kind of task only after `make replay` shows it passing every gate (hidden tests, whole suite, real-data output, scope, blind review) on all archived tasks of that kind, two runs each. `make finish` archives each brief so every task becomes a replay case; fill in its `Scope:` and `Check:` lines.
 - A prompt change (`harness.SYSTEM`, `harness.lists_text`, `styles.DEFINITIONS`) makes every saved answer miss once; batch prompt changes.
 
 ## Conventions

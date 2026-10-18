@@ -1,0 +1,229 @@
+{
+ "1216425": {
+  "labels": [
+   {
+    "count": 10,
+    "name": "Blue Note",
+    "records": [
+     {
+      "artist": "Jutta Hipp With Zoot Sims",
+      "id": 3820432,
+      "title": "Jutta Hipp With Zoot Sims",
+      "year": 1957
+     },
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     }
+    ]
+   }
+  ],
+  "musicians": [
+   {
+    "count": 1,
+    "name": "Billy Higgins",
+    "records": [
+     {
+      "artist": "Lee Morgan",
+      "id": 7925345,
+      "title": "The Sidewinder",
+      "year": 1964
+     }
+    ],
+    "role": "Drums"
+   },
+   {
+    "count": 1,
+    "name": "Herbie Hancock",
+    "records": [
+     {
+      "artist": "Wayne Shorter",
+      "id": 31430060,
+      "title": "Speak No Evil",
+      "year": 1966
+     }
+    ],
+    "role": "Piano"
+   }
+  ],
+  "producers": [
+   {
+    "count": 6,
+    "name": "Alfred Lion",
+    "records": [
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     },
+     {
+      "artist": "Jimmy Smith With Stanley Turrentine",
+      "id": 15966924,
+      "title": "Prayer Meetin'",
+      "year": 1964
+     }
+    ]
+   }
+  ]
+ },
+ "12989331": {
+  "labels": [],
+  "musicians": [
+   {
+    "count": 1,
+    "name": "Bill Evans",
+    "records": [
+     {
+      "artist": "Bill Evans Trio, The",
+      "id": 9998173,
+      "title": "Portrait In Jazz",
+      "year": 1960
+     }
+    ],
+    "role": "Piano"
+   },
+   {
+    "count": 2,
+    "name": "\"Philly\" Joe Jones",
+    "records": [
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Sonny Clark",
+      "id": 5462880,
+      "title": "The Art Of The Trio",
+      "year": 1980
+     }
+    ],
+    "role": "Drums"
+   },
+   {
+    "count": 1,
+    "name": "Sam Jones",
+    "records": [
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     }
+    ],
+    "role": "Bass"
+   }
+  ],
+  "producers": []
+ },
+ "14098396": {
+  "labels": [
+   {
+    "count": 9,
+    "name": "Blue Note",
+    "records": [
+     {
+      "artist": "Jutta Hipp With Zoot Sims",
+      "id": 3820432,
+      "title": "Jutta Hipp With Zoot Sims",
+      "year": 1957
+     },
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     }
+    ]
+   }
+  ],
+  "musicians": [
+   {
+    "count": 2,
+    "name": "Shirley Scott",
+    "records": [
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     },
+     {
+      "artist": "Stanley Turrentine Featuring Shirley Scott",
+      "id": 24884279,
+      "title": "Common Touch",
+      "year": 1968
+     }
+    ],
+    "role": "Organ"
+   },
+   {
+    "count": 2,
+    "name": "Bob Cranshaw",
+    "records": [
+     {
+      "artist": "Lee Morgan",
+      "id": 7925345,
+      "title": "The Sidewinder",
+      "year": 1964
+     },
+     {
+      "artist": "Stanley Turrentine Featuring Shirley Scott",
+      "id": 24884279,
+      "title": "Common Touch",
+      "year": 1968
+     }
+    ],
+    "role": "Bass"
+   }
+  ],
+  "producers": [
+   {
+    "count": 5,
+    "name": "Alfred Lion",
+    "records": [
+     {
+      "artist": "John Coltrane",
+      "id": 24597290,
+      "title": "Blue Train: The Complete Masters",
+      "year": 1958
+     },
+     {
+      "artist": "Stanley Turrentine",
+      "id": 8238279,
+      "title": "Never Let Me Go",
+      "year": 1963
+     },
+     {
+      "artist": "Jimmy Smith With Stanley Turrentine",
+      "id": 15966924,
+      "title": "Prayer Meetin'",
+      "year": 1964
+     }
+    ]
+   }
+  ]
+ }
+}
