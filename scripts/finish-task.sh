@@ -1,5 +1,6 @@
 #!/bin/bash
 # Removes a task's worktree and branch once its branch is merged into main: make finish NAME=fix-search
+{  # read the whole script before running any of it, so editing this file during a run cannot break that run
 set -e
 cd "$(dirname "$0")/.."
 NAME="$1"; WT="$(dirname "$PWD")/$(basename "$PWD")-$NAME"
@@ -16,3 +17,5 @@ fi
 git worktree remove --force "$WT"          # --force: TASK.md and the data symlinks are untracked by design
 git branch -d "$NAME"
 echo "Task $NAME finished: worktree and branch removed."
+exit
+}

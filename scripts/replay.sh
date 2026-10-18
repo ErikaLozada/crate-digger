@@ -3,6 +3,7 @@
 #   make replay TASK=artist-links KIND=codex|claude [MODEL=...] [EFFORT=low|medium|high]
 #   make replay-clean RUN=replay-artist-links-1a2b          removes a replay folder once reviewed
 # The worker gets a clone holding history only up to the task's Base, with no remote, so it cannot see the reference.
+{  # read the whole script before running any of it, so editing this file during a run cannot break that run
 set -e
 cd "$(dirname "$0")/.."
 if [ "$1" = clean ]; then
@@ -51,3 +52,5 @@ out="$(python3 scripts/grade.py run "$TASK" "$D")"; echo "$out"
 [ "$PANE" != unknown ] && herdr pane close "$PANE" >/dev/null 2>&1 || true
 if echo "$out" | grep -q '^tests: pass' && ! echo "$out" | grep -q 'FAIL'; then echo "RESULT $RUN pass"; else echo "RESULT $RUN fail"; fi
 echo "Blind review: python3 scripts/grade.py diff $D   then   python3 scripts/grade.py review $(basename "$D") pass|fail \"note\""
+exit
+}

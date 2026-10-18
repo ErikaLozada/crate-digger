@@ -4,6 +4,7 @@
 #   make worker NAME=fix-search KIND=codex|claude [OWNER=...] [MODEL=...] [EFFORT=low|medium|high]   DRY=1 prints the commands
 # Codex: may write only its worktree, may use the network (local test server, herdr), asks for anything else; it cannot
 # write git metadata, so it leaves its work uncommitted and the lead commits it. Claude: auto permission mode, commits itself.
+{  # read the whole script before running any of it, so editing this file during a run cannot break that run
 set -e
 cd "$(dirname "$0")/.."
 NAME="$1"; KIND="$2"; OWNER="$3"; MODEL="$4"; EFFORT="$5"
@@ -40,3 +41,5 @@ PANE="$(herdr pane split ${SPLIT_PANE:+--pane "$SPLIT_PANE"} $([ -z "$SPLIT_PANE
 herdr agent start "$NAME" --kind "$KIND" --pane "$PANE" --timeout 60000 -- "${ARGS[@]}" >/dev/null \
   || echo "Worker $NAME started but is not ready: it may be waiting for an approval in pane $PANE"
 echo "Worker $NAME ($KIND) in pane $PANE, folder $WT. Brief it: herdr agent prompt $NAME \"...\" --wait"
+exit
+}

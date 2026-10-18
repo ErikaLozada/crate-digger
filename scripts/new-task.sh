@@ -1,6 +1,7 @@
 #!/bin/bash
 # Starts a task in its own worktree and branch, beside this folder: make task NAME=fix-search [OWNER="Codex"]
 # Untracked files the code needs (data, keys) are symlinked in; tracked ones come from the branch.
+{  # read the whole script before running any of it, so editing this file during a run cannot break that run
 set -e
 cd "$(dirname "$0")/.."
 NAME="$1"; OWNER="${2:-unassigned}"
@@ -45,3 +46,5 @@ set -a; . ~/.config/crate-digger/env; set +a; CD_HOST=127.0.0.1 CD_PORT=$PORT py
 ## Notes
 EOF
 echo "Task $NAME: $WT (branch $NAME, test port $PORT). Fill in TASK.md; finish with: make finish NAME=$NAME"
+exit
+}

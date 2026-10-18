@@ -77,6 +77,8 @@ Escalate on evidence: a worker that fails its tests twice, keeps asking QUESTION
 - Small commits whose message says why. Commit finished work promptly: the Mac copy pulls from here with `git pull linux main`.
 - Run `make report` after a run or review; never copy results into notes by hand.
 
+- Shell scripts wrap their body in `{ ... exit; }` after the header comments, so bash reads the whole file first and editing a script cannot break a run in progress.
+
 ## Glossary
 
 - **Recommendation** (code: `recommend`, `/api/recommend`) = the card's sentence, main style and **Closest in Your Collection** picks, from one model call.

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Deploys main to the live service: only a committed, tested tree, and logs what went live.
 # Run with `make deploy`. Page-only changes don't need it; Python changes do.
+{  # read the whole script before running any of it, so editing this file during a run cannot break that run
 set -e
 cd "$(dirname "$0")/.."
 PORT="${CD_PORT:-8000}"
@@ -16,3 +17,5 @@ fi
 line="$(date '+%Y-%m-%d %H:%M') $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
 echo "$line" >> data/deploys.log
 echo "Live: $line"
+exit
+}
