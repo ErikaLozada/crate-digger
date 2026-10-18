@@ -1,15 +1,27 @@
-"""Crate Digger prototype: verify the configured model IDs and structured-output support.
+"""Crate Digger prototype: verify the configured model IDs and structured-output support on OpenRouter.
 
-Asks each provider which models the key can use, checks the configured IDs are among them,
-then (with --probe) makes one tiny structured call to each. Keys come from the environment
-(OPENAI_API_KEY, ANTHROPIC_API_KEY); nothing is written to disk.
+Checks the configured IDs are in OpenRouter's model list and support structured outputs, then
+(with --probe) makes one tiny structured call to each. The key is read from the macOS Keychain
+(service "crate-digger-openrouter") or the OPENROUTER_API_KEY environment variable; it is never
+written to disk or printed.
 """
-import json, os, sys, urllib.request, urllib.error
+import json, os, subprocess, sys, urllib.request, urllib.error
 
-PRIMARY = os.environ.get('CD_PRIMARY_MODEL', 'gpt-5.6-luna')
-FALLBACK = os.environ.get('CD_FALLBACK_MODEL', 'claude-haiku-5.5')
+PRIMARY = os.environ.get('CD_PRIMARY_MODEL', 'openai/gpt-5.6-luna')
+FALLBACK = os.environ.get('CD_FALLBACK_MODEL', 'anthropic/claude-haiku-5.5')
+KEYCHAIN_SERVICE = 'crate-digger-openrouter'
+URL = 'https://openrouter.ai/api/v1'
 SCHEMA = {'type': 'object', 'properties': {'colour': {'type': 'string', 'enum': ['red', 'blue']}},
           'required': ['colour'], 'additionalProperties': False}
+
+def api_key():
+    k = os.environ.get('OPENROUTER_API_KEY')
+    if k: return k
+    try:
+        return subprocess.run(['security', 'find-generic-password', '-s', KEYCHAIN_SERVICE, '-w'],
+                              capture_output=True, text=True, check=True).stdout.strip()
+    except Exception:
+        return ''
 
 def call(url, headers, body=None, timeout=20):
     req = urllib.request.Request(url, headers=headers, data=json.dumps(body).encode() if body else None)
@@ -21,44 +33,28 @@ def call(url, headers, body=None, timeout=20):
     except Exception as e:
         return 0, {'error': str(e)}
 
-def openai_headers():
-    return {'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY'], 'Content-Type': 'application/json'}
+def headers():
+    return {'Authorization': 'Bearer ' + api_key(), 'Content-Type': 'application/json', 'X-Title': 'Crate Digger'}
 
-def anthropic_headers():
-    return {'x-api-key': os.environ['ANTHROPIC_API_KEY'], 'anthropic-version': '2023-06-01',
-            'Content-Type': 'application/json'}
-
-def list_models(name, url, headers, model):
-    st, d = call(url, headers)
-    if st != 200:
-        print(f'{name}: model list failed (HTTP {st}) {d.get("error")}'); return False
-    ids = sorted(m['id'] for m in d['data'])
-    ok = model in ids
-    print(f'{name}: {model!r} {"FOUND" if ok else "NOT FOUND"} among {len(ids)} models')
-    if not ok:
-        stem = model.split('-')[0]
-        print('   similar:', ', '.join(i for i in ids if i.startswith(stem))[:400] or 'none')
-    return ok
-
-def probe_openai(model):
-    st, d = call('https://api.openai.com/v1/chat/completions', openai_headers(), {
-        'model': model, 'messages': [{'role': 'user', 'content': 'Pick red.'}],
-        'response_format': {'type': 'json_schema', 'json_schema': {'name': 'p', 'strict': True, 'schema': SCHEMA}}})
-    print('openai probe:', st, json.loads(d['choices'][0]['message']['content']) if st == 200 else d.get('error'))
-
-def probe_anthropic(model):
-    st, d = call('https://api.anthropic.com/v1/messages', anthropic_headers(), {
-        'model': model, 'max_tokens': 100, 'messages': [{'role': 'user', 'content': 'Pick red.'}],
-        'tools': [{'name': 'answer', 'description': 'Answer', 'input_schema': SCHEMA}],
-        'tool_choice': {'type': 'tool', 'name': 'answer'}})
-    print('anthropic probe:', st, next(b['input'] for b in d['content'] if b['type'] == 'tool_use') if st == 200 else d.get('error'))
+def chat(model, messages, schema, timeout=20):
+    """One structured call. Routes only to providers that honour the schema and do not keep the data."""
+    return call(URL + '/chat/completions', headers(), {
+        'model': model, 'messages': messages,
+        'response_format': {'type': 'json_schema', 'json_schema': {'name': 'answer', 'strict': True, 'schema': schema}},
+        'provider': {'require_parameters': True, 'data_collection': 'deny'}}, timeout)
 
 if __name__ == '__main__':
-    probe = '--probe' in sys.argv
-    for name, var, url, hdr, model, fn in (
-            ('openai', 'OPENAI_API_KEY', 'https://api.openai.com/v1/models', openai_headers, PRIMARY, probe_openai),
-            ('anthropic', 'ANTHROPIC_API_KEY', 'https://api.anthropic.com/v1/models?limit=1000', anthropic_headers, FALLBACK, probe_anthropic)):
-        if not os.environ.get(var):
-            print(f'{name}: {var} not set, skipped'); continue
-        if list_models(name, url, hdr(), model) and probe:
-            fn(model)
+    have_key = bool(api_key())
+    for model in (PRIMARY, FALLBACK):
+        st, d = call(URL + '/models/%s/endpoints' % model, {})
+        if st != 200:
+            print('%s: %s' % (model, 'NOT FOUND' if st == 404 else 'lookup failed (HTTP %s) %s' % (st, d.get('error')))); continue
+        eps = d['data']['endpoints']
+        structured = sorted({e['provider_name'] for e in eps if 'structured_outputs' in e.get('supported_parameters', [])})
+        price = eps[0]['pricing'] if eps else {}
+        print('%s: found, %d providers, structured outputs on %s; US$%.2f in / US$%.2f out per million tokens' % (
+            model, len(eps), ', '.join(structured) or 'NONE', float(price.get('prompt', 0)) * 1e6, float(price.get('completion', 0)) * 1e6))
+        if '--probe' in sys.argv:
+            if not have_key: print('   probe skipped: no key in Keychain or OPENROUTER_API_KEY'); continue
+            st, r = chat(model, [{'role': 'user', 'content': 'Pick red.'}], SCHEMA)
+            print('   probe:', st, json.loads(r['choices'][0]['message']['content']) if st == 200 else r.get('error'))

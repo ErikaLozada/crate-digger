@@ -15,7 +15,7 @@ wantlist records are used. Runs are written to data/runs/ for the manual false-m
 """
 import argparse, collections, json, os, sys, time
 import library, styles
-from check_models import PRIMARY, FALLBACK, call, openai_headers, anthropic_headers
+from check_models import PRIMARY, FALLBACK, api_key, chat
 
 TIMEOUT = 20
 FAMILIES = list(styles.FAMILIES) + ['Other/uncertain']
@@ -53,17 +53,7 @@ def record_text(r):
 
 def ask(model, system, lists, record):
     """One model call -> parsed dict. Raises on timeout, HTTP error or bad JSON."""
-    user = lists + '\n\n' + record
-    if model.startswith('claude'):
-        st, d = call('https://api.anthropic.com/v1/messages', anthropic_headers(), {
-            'model': model, 'max_tokens': 800, 'system': system, 'messages': [{'role': 'user', 'content': user}],
-            'tools': [{'name': 'answer', 'description': 'The recommendation', 'input_schema': SCHEMA}],
-            'tool_choice': {'type': 'tool', 'name': 'answer'}}, TIMEOUT)
-        if st != 200: raise RuntimeError('HTTP %s %s' % (st, d.get('error')))
-        return next(b['input'] for b in d['content'] if b['type'] == 'tool_use')
-    st, d = call('https://api.openai.com/v1/chat/completions', openai_headers(), {
-        'model': model, 'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}],
-        'response_format': {'type': 'json_schema', 'json_schema': {'name': 'answer', 'strict': True, 'schema': SCHEMA}}}, TIMEOUT)
+    st, d = chat(model, [{'role': 'system', 'content': system}, {'role': 'user', 'content': lists + '\n\n' + record}], SCHEMA, TIMEOUT)
     if st != 200: raise RuntimeError('HTTP %s %s' % (st, d.get('error')))
     return json.loads(d['choices'][0]['message']['content'])
 
@@ -128,8 +118,7 @@ def main():
         lists = lists_text(shelf, lib); r = recs[str(ids[0])]
         print('model %s | %d shelf, %d library | request %d chars\n\n%s\n\n%s' % (
             model, len(shelf), len(lib), len(lists), record_text(r), lists[:600] + ' ...')); return
-    var = 'ANTHROPIC_API_KEY' if model.startswith('claude') else 'OPENAI_API_KEY'
-    if not os.environ.get(var): sys.exit('%s is not set' % var)
+    if not api_key(): sys.exit('No OpenRouter key. Add it with: security add-generic-password -a "$USER" -s crate-digger-openrouter -w')
     rows = []
     for rid in ids:
         x = run_one(model, rid, shelf, want, lib, recs); rows.append(x)
