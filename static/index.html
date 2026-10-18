@@ -187,6 +187,12 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const app = $('#app'), bar = $('#bar');
 const api = async (path, opts) => { const r = await fetch(path, opts); const d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); return d; };
+// A response may render only into the view that started it, even after returning to the same URL.
+let viewVersion = 0;
+function viewGuard() {
+  const version = viewVersion, hash = location.hash;
+  return () => version === viewVersion && hash === location.hash;
+}
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 const I = {
@@ -227,6 +233,7 @@ $('#back').onclick = () => history.length > 1 ? history.back() : (location.hash 
 // ---------------------------------------------------------------- home
 let tab = 'barcode';
 function home(msg) {
+  ++viewVersion;
   chrome('Crate Digger', false);
   app.innerHTML = `<div class="view">
     <h1 class="large-title">Crate Digger</h1>
@@ -323,26 +330,30 @@ $('#scanphoto').onclick = () => { stopScan(); $('#photo').click(); };
 
 async function decodePhoto(file) {
   if (!file) return;
+  const current = viewGuard();
   const msg = $('#scanmsg'); msg.textContent = 'Reading barcode…';
   const url = URL.createObjectURL(file);
   try {
     if (!window.ZXing) throw new Error('the barcode reader did not load');
     const res = await new ZXing.BrowserMultiFormatReader().decodeFromImageUrl(url);
-    location.hash = `#/search/barcode/${encodeURIComponent(res.getText())}`;
+    if (current()) location.hash = `#/search/barcode/${encodeURIComponent(res.getText())}`;
   } catch (e) {
-    msg.textContent = 'No barcode found. Try again closer, or type the digits.';
+    if (current()) msg.textContent = 'No barcode found. Try again closer, or type the digits.';
   } finally { URL.revokeObjectURL(url); }
 }
 
 // ---------------------------------------------------------------- editions
 let fmt = 'All';
 async function editions(kind, text) {
+  ++viewVersion;
+  const current = viewGuard();
   chrome('Editions', true);
   app.innerHTML = `<div class="view"><h1 class="large-title">Editions</h1>
     <div class="group"><div class="row">${I.spinner}<div class="grow s">Searching Discogs for “${esc(text)}”</div></div></div></div>`;
   let d;
   try { d = await api(`/api/search?${kind}=${encodeURIComponent(text)}`); }
-  catch (e) { return home(`Search failed: ${e.message}`); }
+  catch (e) { if (current()) home(`Search failed: ${e.message}`); return; }
+  if (!current()) return;
   const rows = d.results;
   if (rows.length === 1 && !d.note) return location.replace(`#/release/${rows[0].id}`);
   const draw = () => {
@@ -386,6 +397,8 @@ const tagsHTML = (style, decade, how) => style
   : `<span class="pill">Style not clear from Discogs</span>`;
 
 async function card(id) {
+  ++viewVersion;
+  const current = viewGuard();
   chrome('', true);
   app.innerHTML = `<div class="view">
     <div class="hero" id="hero"><div class="ph"></div><div class="skel" style="width:55%;height:18px;margin:0 auto 8px"></div><div class="skel" style="width:40%;height:16px;margin:0 auto"></div></div>
@@ -401,7 +414,8 @@ async function card(id) {
   </div>`;
   let r;
   try { r = await api(`/api/release/${id}`); }
-  catch (e) { app.innerHTML = `<div class="view"><div class="banner">Could not load this release: ${esc(e.message)}</div><a class="btn" href="#/">New Search</a></div>`; return; }
+  catch (e) { if (!current()) return; app.innerHTML = `<div class="view"><div class="banner">Could not load this release: ${esc(e.message)}</div><a class="btn" href="#/">New Search</a></div>`; return; }
+  if (!current()) return;
   remember(r);
   chrome(r.title, true);
 
@@ -426,16 +440,17 @@ async function card(id) {
       <div><b>${m.for_sale ?? '–'}</b><small>For sale</small></div>
     </div>`;
 
-  loadPicks(id, r);
-  loadSamples(id);
+  loadPicks(id, r, current);
+  loadSamples(id, current);
 }
 
-async function loadPicks(id, r) {
+async function loadPicks(id, r, current) {
   const el = $('#picks');
   el.innerHTML = `<div class="row">${I.spinner}<div class="grow s">Finding the closest records…</div></div>${sk(2)}`;
   let x;
   try { x = await api(`/api/recommend/${id}`, {method: 'POST'}); }
   catch (e) { x = {status: 'unavailable: ' + e.message}; }
+  if (!current()) return;
   if (!x.result) {
     el.innerHTML = `<div class="row"><div class="ico gray">${I.minus}</div><div class="grow"><div class="t">Recommendations unavailable</div>
       <div class="s wrap">${esc(x.status.replace(/^unavailable: /, ''))}</div></div></div>`;
@@ -462,10 +477,11 @@ async function loadPicks(id, r) {
   el.after(foot);
 }
 
-async function loadSamples(id) {
+async function loadSamples(id, current) {
   const el = $('#listen');
   let s;
   try { s = await api(`/api/samples/${id}`); } catch (e) { s = {tracks: [], videos: [], error: e.message}; }
+  if (!current()) return;
   el.innerHTML = s.tracks.length ? s.tracks.map((t, i) => `
     <div class="row">
       <span class="num">${i + 1}</span>
@@ -501,13 +517,14 @@ window.addEventListener('hashchange', route);
 $('#refresh').onclick = async e => {
   const b = e.currentTarget; b.disabled = true; b.style.opacity = .4;
   home('Refreshing… new records take a couple of seconds each to download.');
+  const current = viewGuard();
   try {
     const d = await api('/api/refresh', {method: 'POST'});
-    home(`Refreshed: ${d.shelf} shelf records, ${d.library} library albums` +
+    if (current()) home(`Refreshed: ${d.shelf} shelf records, ${d.library} library albums` +
       (d.added ? `; ${d.added} new record${d.added > 1 ? 's' : ''} downloaded` : '') +
       (d.failed.length ? `. Could not download ${d.failed.join(', ')}; Refresh again to retry.` : '.'));
   }
-  catch (err) { home(`Refresh failed: ${err.message}`); }
+  catch (err) { if (current()) home(`Refresh failed: ${err.message}`); }
   b.disabled = false; b.style.opacity = '';
 };
 route();

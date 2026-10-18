@@ -1,11 +1,31 @@
 """Crate Digger, Phase 0: read the Apple Music library export (Library.xml)
 and match Discogs records to it."""
-import plistlib, re, unicodedata, difflib, collections, os, hashlib
+import plistlib, re, unicodedata, collections, os, hashlib
 
 def norm(s):
     s = unicodedata.normalize('NFKD', s or '').encode('ascii', 'ignore').decode().lower()
     s = re.sub(r'\(.*?\)|\[.*?\]', ' ', s)
     s = re.sub(r'\b(remaster(ed)?|deluxe|edition|expanded|version|the|ep|single|feat|featuring|and|with|trio|quartet|quintet|his|y)\b', ' ', s)
+    return re.sub(r'[^a-z0-9]+', ' ', s).strip()
+
+def album_title(s):
+    """Normalize typography and known edition suffixes, preserving different recordings/titles."""
+    s = (s or '').translate(str.maketrans({'’': "'", '‘': "'", '–': '-', '—': '-'}))
+    s = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode().lower()
+    edition = re.compile(
+        r'(?:(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?|'
+        r'(?:deluxe|expanded)(?:\s+(?:edition|version))?|'
+        r'(?:\d+(?:st|nd|rd|th)?\s+)?anniversary(?:\s+edition)?|'
+        r'\d+\s+years|rudy van gelder edition|(?:the\s+)?complete masters)')
+    # Only remove suffixes we understand. In particular, keep Live, Single, EP and volume numbers.
+    while True:
+        suffix = re.search(r'\s*(?:\(([^()]*)\)|\[([^\[\]]*)\])\s*$', s)
+        if not suffix:
+            suffix = re.search(r'(?:\s+-\s+|:\s*)([^:]+)$', s)
+        if not suffix: break
+        text = next(x for x in suffix.groups() if x is not None).strip()
+        if not (edition.fullmatch(text) or re.fullmatch(r'feat\.?\s+.+', text)): break
+        s = s[:suffix.start()].rstrip()
     return re.sub(r'[^a-z0-9]+', ' ', s).strip()
 
 def load(path):
@@ -44,24 +64,20 @@ def load(path):
     return out
 
 def find_album(lib, artist_names, titles):
-    """The library album that is this record, or None."""
+    """The library album that is this record, or None; title similarity alone is not ownership."""
+    titles = {album_title(t) for t in titles} - {''}
     toks, compact = set(), set()
     for n in artist_names:
         toks |= {w for w in norm(n).split() if len(w) > 2}
         compact.add(re.sub(r'[^a-z0-9]', '', norm(n)))
-    best = None
     for a in lib:
-        if not a['n_album']: continue
+        title = album_title(a['album'])
+        if not title: continue
         at = set(a['n_artist'].split())
         ac = a['n_artist'].replace(' ', '')
         if not (toks & at) and not any(c and len(c) >= 3 and c in ac for c in compact): continue
-        for t in titles:
-            nt = norm(t)
-            if not nt: continue
-            r = difflib.SequenceMatcher(None, nt, a['n_album']).ratio()
-            if len(nt) >= 5 and (a['n_album'].startswith(nt) or nt.startswith(a['n_album'])): r = max(r, 0.9)
-            if r >= 0.86 and (best is None or r > best[0]): best = (r, a)
-    return best[1] if best else None
+        if title in titles: return a
+    return None
 
 def by_artist(lib, artist_names):
     """Everything in the library by any of these artists."""
