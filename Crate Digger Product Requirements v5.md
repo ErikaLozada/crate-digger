@@ -39,7 +39,7 @@ The prototype card must show:
 - Apple Music samples when available; and
 - Discogs price and market data when available.
 
-Style, ownership and close-match/no-match evidence are required for a successful decision. Samples and price data are optional and must be marked unavailable when a service has no result. Buy, Pass, Explore later and Wishlist buttons, persistent history, and Discogs collection/wantlist mutations are out of scope for this prototype; the user decides manually after viewing the card.
+Style, ownership and close-match/no-match evidence are required for a successful decision. Samples and price data are optional and must be marked unavailable when a service has no result. Buy, Pass, Explore later and Wishlist were added to the prototype on 19 October 2026 (see `docs/decisions.md`): Buy and Wishlist change your Discogs collection and wantlist, each with Undo, and every tap is saved in a local dig history.
 
 ### Prototype data and services
 

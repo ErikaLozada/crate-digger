@@ -6,7 +6,7 @@ set -e
 cd "$(dirname "$0")/.."
 NAME="$1"; OWNER="${2:-unassigned}"
 LINKS="data/* discogs_token.txt"            # untracked files a worktree needs; tracked ones are checked out
-OWN="data/recommendations.json data/deploys.log"   # written by the live app: each worktree keeps its own
+OWN="data/recommendations.json data/deploys.log data/decisions.json"   # written by the live app: each worktree keeps its own
 [ -n "$NAME" ] || { echo "usage: make task NAME=<short-name> [OWNER=<agent>]"; exit 1; }
 [ "$(git branch --show-current)" = main ] || { echo "Run from the main worktree."; exit 1; }
 MAIN="$PWD"; WT="$(dirname "$MAIN")/$(basename "$MAIN")-$NAME"
