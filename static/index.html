@@ -392,6 +392,27 @@ function ownership(o) {
   return row('blue', I.note, 'In your Apple Music library', `Not on your shelf · ${plural(o.plays, 'play')} · ${o.liked} liked`);
 }
 
+function connections(links) {
+  const rows = [];
+  for (const kind of ['musicians', 'producers', 'labels']) {
+    for (const entry of links?.[kind] || []) {
+      const title = kind === 'producers' ? `Produced by ${entry.name}`
+        : kind === 'musicians' && entry.role ? `${entry.name} · ${entry.role}` : entry.name;
+      const records = entry.records.map(r => `<a href="#/release/${esc(encodeURIComponent(r.id))}">${esc(r.title)}</a>`).join(', ');
+      const extra = entry.count > entry.records.length ? ` and ${esc(entry.count - entry.records.length)} more` : '';
+      const first = entry.records[0];
+      const subtitle = kind === 'labels' ? `${esc(plural(entry.count, 'record'))} you own: ${records}${extra}`
+        : entry.count === 1 && first ? `on ${records} (${esc([first.artist, first.year].filter(v => v != null && v !== '').join(', '))})`
+        : `on ${esc(plural(entry.count, 'record'))}: ${records}${extra}`;
+      const icon = kind === 'labels' ? I.disc : kind === 'producers' ? I.stack : I.note;
+      rows.push(`<div class="row"><div class="ico blue" aria-hidden="true">${icon}</div><div class="grow">
+        <div class="t wrap" style="font-weight:600">${esc(title)}</div><div class="s wrap">${subtitle}</div></div></div>`);
+    }
+  }
+  return rows.length ? `<div class="section-h"><h2>Connections on Your Shelf</h2></div>
+    <div class="group" style="--inset:58px">${rows.join('')}</div>` : '';
+}
+
 const tagsHTML = (style, decade, how) => style
   ? `<span class="pill tint">${esc(style)}</span>${decade ? `<span class="pill">${esc(decade)}</span>` : ''}<span class="pill">${esc(how)}</span>`
   : `<span class="pill">Style not clear from Discogs</span>`;
@@ -403,6 +424,7 @@ async function card(id) {
   app.innerHTML = `<div class="view">
     <div class="hero" id="hero"><div class="ph"></div><div class="skel" style="width:55%;height:18px;margin:0 auto 8px"></div><div class="skel" style="width:40%;height:16px;margin:0 auto"></div></div>
     <div class="group" id="own">${sk(1)}</div>
+    <div id="connections"></div>
     <div class="section-h"><h2>Closest in Your Collection</h2></div>
     <div class="group" id="picks">${sk(2)}${sk(2)}</div>
     <div class="section-h"><h2>Listen</h2></div>
@@ -428,6 +450,7 @@ async function card(id) {
     <p class="meta" style="text-transform:none;font-weight:400;margin-top:2px">${esc([r.label, r.catno].filter(Boolean).join(' · '))}</p>
     <div class="tags" id="tags">${tagsHTML(r.style, r.decade, 'Discogs')}</div>`;
   $('#own').innerHTML = ownership(r.own);
+  $('#connections').innerHTML = connections(r.links);
   $('#attrib').innerHTML = `Data provided by <a href="${esc(r.uri)}" target="_blank" rel="noopener">Discogs</a>`;
 
   const m = r.market;
