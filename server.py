@@ -6,9 +6,9 @@ Serves static/index.html and a small JSON API. The Discogs token (discogs_token.
 model keys stay here; the browser never sees them. The inspected release is looked up live on
 Discogs; if that fails, the copy saved by fetch_discogs.sh is used and the card says so.
 """
-import csv, hashlib, json, os, re, socket, sys, threading, time, urllib.error, urllib.parse, urllib.request
+import csv, datetime, hashlib, json, os, re, socket, sys, tempfile, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-import engine, library, harness, build_compact
+import engine, library, harness, build_compact, discogs_write
 import styles as ST
 
 PORT = int(os.environ.get('CD_PORT', 8000))
@@ -19,13 +19,14 @@ TOKEN = open('discogs_token.txt').read().strip() if os.path.exists('discogs_toke
 # ----------------------------------------------------------------------------
 # Snapshots, loaded once at start and again on Refresh
 def load():
-    global D, SHELF, SHELF_IDS, LIB, H
+    global D, SHELF, SHELF_IDS, WANT_IDS, LIB, H
     D = json.load(open('data/compact.json'))
     col = list(csv.DictReader(open('data/collection.csv', encoding='utf-8-sig')))
     missing = [r['release_id'] for r in col if r['release_id'] not in D['releases']]
     if missing: print('no saved details for shelf releases %s; run fetch_discogs.sh' % ', '.join(missing))
     SHELF = [engine.Rec(D['releases'][r['release_id']], D['masters'], 'shelf', r) for r in col if r['release_id'] in D['releases']]
     SHELF_IDS = {t.id for t in SHELF}
+    WANT_IDS = {int(r['release_id']) for r in csv.DictReader(open('data/wantlist.csv', encoding='utf-8-sig')) if r.get('release_id')}
     LIB = library.load('data/Library.xml')
     shelf, want, lib, recs = harness.load_snapshots()   # the harness's own shape; its shelf is the fixed test snapshot
     live = {str(t.id): engine.describe(t) for t in SHELF}
@@ -167,7 +168,9 @@ def release(rid):
             'image': (raw.get('images') or [{}])[0].get('uri') or raw.get('thumb'),
             'style': t.family, 'own': own, 'facts': res['facts'], 'territory': res['territory'], 'why': res['why'],
             'market': {'low': rel['lowest_price'], 'have': rel['have'], 'want': rel['want'], 'for_sale': rel['num_for_sale']},
-            'videos': rel['videos'][:3], 'uri': rel['uri'], 'tracks': rel['tracks'], 'links': engine.shelf_links(t, SHELF)}
+            'videos': rel['videos'][:3], 'uri': rel['uri'], 'tracks': rel['tracks'], 'links': engine.shelf_links(t, SHELF),
+            'decision': next((e for e in reversed(decisions()) if e['release_id'] == rid and e['undone'] is None), None),
+            'wanted': rid in WANT_IDS}
 
 def samples(rid):
     raw, m, live = fetch_release(rid)
@@ -191,6 +194,69 @@ def samples(rid):
 SAVED_PATH = 'data/recommendations.json'
 SAVED = json.load(open(SAVED_PATH, encoding='utf-8')) if os.path.exists(SAVED_PATH) else {}
 SAVED_LOCK = threading.Lock()
+
+DECISIONS_LOCK = threading.RLock()
+
+def decisions():
+    path = os.environ.get('CD_DECISIONS', 'data/decisions.json')
+    with DECISIONS_LOCK:
+        try:
+            with open(path, encoding='utf-8') as f: return json.load(f)
+        except FileNotFoundError:
+            return []
+
+def save_decisions(entries):
+    path = os.environ.get('CD_DECISIONS', 'data/decisions.json')
+    folder = os.path.dirname(os.path.abspath(path))
+    name = None
+    try:
+        with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=folder, delete=False) as f:
+            name = f.name
+            json.dump(entries, f, ensure_ascii=False)
+        os.replace(name, path)
+    finally:
+        if name and os.path.exists(name): os.unlink(name)
+
+def now():
+    return datetime.datetime.now().astimezone().isoformat(timespec='seconds')
+
+def record_decision(rid, body):
+    action = body.get('action')
+    if action not in ('buy', 'pass', 'explore', 'wishlist'): raise ValueError('unknown action')
+    price, tracks, note = body.get('price'), body.get('tracks', []), body.get('note', '')
+    if (price is not None and not isinstance(price, str) or
+            not isinstance(tracks, list) or any(not isinstance(t, str) for t in tracks) or
+            not isinstance(note, str)):
+        raise ValueError('invalid decision fields')
+    rel = D.get('releases', {}).get(str(rid)) if 'D' in globals() else None
+    if rel is None: rel = compact(fetch_release(rid)[0])
+    with DECISIONS_LOCK:
+        discogs = discogs_write.buy(rid) if action == 'buy' else discogs_write.want(rid) if action == 'wishlist' else None
+        entry = {'id': uuid.uuid4().hex, 'release_id': rid, 'action': action, 'date': now(),
+                 'artist': engine.clean_name(rel['artists_sort']), 'title': rel['title'],
+                 'price': price, 'tracks': tracks, 'note': note, 'discogs': discogs, 'undone': None}
+        entries = decisions(); entries.append(entry); save_decisions(entries)
+    if action in ('buy', 'wishlist'):
+        try: refresh()
+        except Exception as e: print('refresh after %s failed: %s' % (action, e), file=sys.stderr)
+    return entry
+
+def undo_decision(entry_id):
+    with DECISIONS_LOCK:
+        entries = decisions()
+        entry = next((e for e in entries if e['id'] == entry_id and e['undone'] is None), None)
+        if entry is None: return None
+        rid = entry['release_id']
+        if entry['action'] == 'buy':
+            discogs_write.unbuy(rid, entry['discogs']['folder_id'], entry['discogs']['instance_id'])
+        elif entry['action'] == 'wishlist':
+            discogs_write.unwant(rid)
+        entry['undone'] = now()
+        save_decisions(entries)
+    if entry['action'] in ('buy', 'wishlist'):
+        try: refresh()
+        except Exception as e: print('refresh after undo %s failed: %s' % (entry['action'], e), file=sys.stderr)
+    return entry
 
 def request_key(model, rid, shelf, lib, recs):
     own = 'S%s' % rid if 'S%s' % rid in shelf else None
@@ -233,6 +299,24 @@ class Handler(BaseHTTPRequestHandler):
     def route(self, method):
         u = urllib.parse.urlparse(self.path); p = u.path
         try:
+            m = re.fullmatch(r'/api/decision/(\d+)', p) if method == 'POST' else None
+            if m:
+                if self.headers.get('Content-Type', '').split(';', 1)[0].strip().lower() != 'application/json':
+                    return self.send(415, {'error': 'application/json required'})
+                try:
+                    body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
+                    if not isinstance(body, dict): raise ValueError('JSON object required')
+                    return self.send(200, {'decision': record_decision(int(m.group(1)), body)})
+                except (ValueError, TypeError) as e:
+                    return self.send(400, {'error': str(e)})
+            m = re.fullmatch(r'/api/decision/([0-9a-f]{32})', p) if method == 'DELETE' else None
+            if m:
+                if self.headers.get('Content-Type', '').split(';', 1)[0].strip().lower() != 'application/json':
+                    return self.send(415, {'error': 'application/json required'})
+                entry = undo_decision(m.group(1))
+                return self.send(200, {'decision': entry}) if entry else self.send(404, {'error': 'not found'})
+            if method == 'GET' and p == '/api/explore':
+                return self.send(200, {'entries': [e for e in reversed(decisions()) if e['action'] == 'explore' and e['undone'] is None]})
             if method == 'GET' and p in ('/', '/index.html'):
                 return self.send(200, open('static/index.html', 'rb').read(), 'text/html')
             if method == 'GET' and p == '/api/search': return self.send(200, search(urllib.parse.parse_qs(u.query)))
@@ -247,6 +331,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self): self.route('GET')
     def do_POST(self): self.route('POST')
+    def do_DELETE(self): self.route('DELETE')
     def log_message(self, fmt, *a): sys.stderr.write('%s\n' % (fmt % a))
 
 if __name__ == '__main__':
