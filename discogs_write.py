@@ -42,7 +42,9 @@ def _user():
     return _username
 
 def _release(rid):
-    return _call('GET', '/releases/%s' % int(rid))
+    """Fields for the export row; just the id if Discogs can't be read, which is enough for Refresh to fetch the rest."""
+    try: return _call('GET', '/releases/%s' % int(rid))
+    except DiscogsError: return {'id': int(rid)}
 
 def _format(r):
     parts = []
@@ -88,8 +90,7 @@ def buy(rid):
     if DRY: return {'folder_id': 1, 'instance_id': random.randint(10**8, 10**9)}
     d = _call('POST', '/users/%s/collection/folders/1/releases/%s' % (_user(), int(rid)))
     if not d.get('instance_id'): raise DiscogsError('Discogs did not confirm the purchase')
-    try: _add_row(COLLECTION_CSV, _release(rid), {'CollectionFolder': 'Uncategorized', 'Date Added': _now()})
-    except DiscogsError: pass                               # on Discogs already; the next Refresh brings the row
+    _add_row(COLLECTION_CSV, _release(rid), {'CollectionFolder': 'Uncategorized', 'Date Added': _now()})
     return {'folder_id': 1, 'instance_id': d['instance_id']}
 
 def unbuy(rid, folder_id, instance_id):
@@ -102,8 +103,7 @@ def want(rid):
     """Adds release rid to the wantlist. Returns {}."""
     if DRY: return {}
     _call('PUT', '/users/%s/wants/%s' % (_user(), int(rid)))
-    try: _add_row(WANTLIST_CSV, _release(rid), {}, [_now()])
-    except DiscogsError: pass
+    _add_row(WANTLIST_CSV, _release(rid), {}, [_now()])
     return {}
 
 def unwant(rid):

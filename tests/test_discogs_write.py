@@ -45,6 +45,15 @@ class T(unittest.TestCase):
         self.assertEqual(len(r), 13)
         self.assertEqual(self.calls[0][2]['Authorization'], 'Discogs token=SECRET')
 
+    def test_buy_keeps_an_id_only_row_when_release_details_fail(self):
+        def details_down(req, timeout=0):                   # the POST ends in /releases/77 too, so fail only the GET
+            if req.get_method() == 'GET' and req.full_url.endswith('/releases/77'): raise urllib.error.URLError('down')
+            return self.urlopen(req, timeout)
+        with mock.patch('urllib.request.urlopen', details_down):
+            self.assertEqual(dw.buy(77)['instance_id'], 123)
+        r = self.rows(self.col)[-1]
+        self.assertEqual((r[1], r[7], r[8]), ('', '77', 'Uncategorized'))
+
     def test_unbuy_removes_row(self):
         dw.buy(77); self.calls.clear()
         dw.unbuy(77, 1, 123)
