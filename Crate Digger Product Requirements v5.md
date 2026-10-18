@@ -1,6 +1,6 @@
 # Crate Digger: Product Requirements
 
-Oct 3, 2026 · @Erika · Revision 5 (4 October 2026: rewritten around the Phase 0 test results)
+Oct 3, 2026 · @Erika · Revision 7 (18 October 2026: model calls through OpenRouter, key storage, measured cost and speed; see Revision notes)
 
 ## Summary
 
@@ -45,7 +45,7 @@ Style, ownership and close-match/no-match evidence are required for a successful
 
 Discogs collection data and Apple Music library data are imported into local snapshots through an explicit Refresh action. The Apple Music snapshot includes saved and playlist albums, play counts, and liked/favourite tracks. The inspected Discogs release is looked up live. The browser calls the local backend, not Discogs or the language-model provider directly; credentials stay in the backend environment.
 
-The recommendation request receives the scanned record and the local candidate lists. It must return structured data: one style from the 24 families in `styles.py` or `Other/uncertain`, up to three candidate IDs, and a short reason for each. The app drops IDs not present in the supplied snapshots, permits zero matches, and never turns an unavailable or timed-out result into a guessed match. The primary model is configured as OpenAI `gpt-5.6-luna`, with Anthropic `claude-haiku-5.5` as fallback; provider availability and exact model IDs must be verified before implementation.
+The recommendation request receives the scanned record and the local candidate lists. It must return structured data: one style from the 24 families in `styles.py` or `Other/uncertain`, up to three candidate IDs, and a short reason for each. The app drops IDs not present in the supplied snapshots, permits zero matches, and never turns an unavailable or timed-out result into a guessed match. Model calls go through [OpenRouter](https://openrouter.ai), one API and one key in front of several providers. The primary model is `openai/gpt-5.6-luna` and the fallback is `anthropic/claude-haiku-5.5`; both IDs were checked against OpenRouter's live model list on 18 October 2026 (`check_models.py`). Each request asks OpenRouter to route only to providers that honour the JSON schema and do not keep the request data, and to return the cost of the call. The web app currently calls only the primary; the fallback is run in the harness, so the two can be compared on the same records.
 
 A normal record gets one model run with a 20-second timeout. If the first result's style is `Other/uncertain`, the app runs two more attempts. The majority style wins; matches come from the attempt that produced that majority style. If there is no majority, recommendations are unavailable. A timeout is a recommendation-availability failure, not a false close match.
 
@@ -83,7 +83,7 @@ The app shows evidence and lets you decide. It does not score whether you will l
 | 1. Where it sits | Show the labels, musicians and main style that link it to what you own | The main style is right for 9 in 10 records; label and musician lines are facts | Main style ticked right on 13 of 15 |
 | 1. Samples | Hear it, because listening is what decides | A 30-second preview or a video listed on Discogs for at least 80% of scanned albums. A YouTube search link is always offered as well, but does not count | 167 of 179 (93%) |
 | 2. Capture | Leave the bin with a record of what you decided | Every record you look at closely ends in one tap: Buy, Pass, Explore later or Wishlist | Not tested: needs the app |
-| 2. Speed and cost | Quick and affordable | Ownership and the fact lines in 1 s; the full card in 4 s where the model allows; running cost you have agreed to | Fastest tier answered in about 3 s but picked badly; Sonnet's speed per scan is not measured yet |
+| 2. Speed and cost | Quick and affordable | Ownership and the fact lines in 1 s; the full card in 4 s where the model allows; running cost you have agreed to | Prototype models (18 October): picks in a median 5 to 6 s, so the full card misses 4 s; US$0.001 to US$0.007 per record, a few dollars in a heavy month |
 | 3. Market context | See price and demand at a glance | The sticker price compared with the lowest listed price once the edition is confirmed, with owners, wants and copies for sale as plain numbers. Context only: no label | Not tested: needs the app |
 
 **Non-goals for v1:** a like/dislike verdict or score, selling, social features, a full music player, price history charts, offline use (a good connection is assumed), Android.
@@ -195,7 +195,7 @@ The app still does not predict whether you will like a record. Your earlier libr
 
 ### Closest by sound
 
-On each scan the app sends one request to the configured language model. The request holds your shelf list, your library list with plays and liked/favourite tracks, the scanned record's artist, title, year, label and Discogs styles, and the task. The model returns one sentence on what the record is, its main style, and up to three picks with a short reason each. In the prototype, the primary model is OpenAI `gpt-5.6-luna` with Anthropic `claude-haiku-5.5` as fallback; the exact provider model IDs must be verified before implementation. The full request for Seven Days of Falling is in the file "Seven Days of Falling - request to the model.txt", sent to you in the chat on 4 October: 1,497 lines, about 130,000 characters, almost all of it the library list.
+On each scan the app sends one request to the configured language model. The request holds your shelf list, your library list with plays and liked/favourite tracks, the scanned record's artist, title, year, label and Discogs styles, and the task. The model returns one sentence on what the record is, its main style, and up to three picks with a short reason each. In the prototype, the primary model is `openai/gpt-5.6-luna` with `anthropic/claude-haiku-5.5` as fallback, both called through OpenRouter (see Prototype data and services). The full request for Seven Days of Falling is in the file "Seven Days of Falling - request to the model.txt", sent to you in the chat on 4 October: 1,497 lines, about 130,000 characters, almost all of it the library list.
 
 Rules for the request, from what you ticked and what you left:
 
@@ -310,7 +310,7 @@ Questions to settle when you return to it:
 
 ## Data sources
 
-A scan joins three services: Discogs, Apple Music and the Claude API. Items marked *to verify* have not been checked; the rest were checked against official documentation on 3 and 4 October 2026.
+A scan joins three services: Discogs, Apple Music and a language model reached through OpenRouter. Items marked *to verify* have not been checked; the rest were checked against official documentation on 3 and 4 October 2026, and the OpenRouter row on 18 October 2026.
 
 | Source | Provides | Cost | Limits and terms | Role |
 | --- | --- | --- | --- | --- |
@@ -318,46 +318,51 @@ A scan joins three services: Discogs, Apple Music and the Claude API. Items mark
 | Apple Music API / MusicKit | Catalogue match (including lookup by UPC), artwork, 30 s previews; your library with permission, including plays per song | Apple Developer Program, [US$99 a year](https://developer.apple.com/programs/); AU price shown at enrolment | The printed barcode often differs from the digital UPC, so lookup falls back to artist and title. Whether liked tracks and playlist contents are exposed the way the Library.xml export shows them is *to verify* | Previews, library import, ownership check |
 | [Discogs](https://www.discogs.com/developers) (your account) | Your collection and wantlist (read, and add on Buy or Wishlist); search by barcode, catalogue number, artist and title; one release call returns credits, styles, country, label, owner and want counts, copies for sale, lowest price and linked videos; the list of editions of an album | Free | 60 requests a minute with authentication; prices in AUD on request | Identification, collection, credits, styles, price and market numbers, video links |
 | YouTube (link only) | Opens the linked video or a search in the YouTube app when you tap Sample, for records that are not on Apple Music | Free | No API call and no key | Sampling fallback (F7) |
-| [Claude API](https://platform.claude.com/docs/en/about-claude/pricing) | What the record is, its main style and the closest picks (Sonnet 5.5); reading a cover the phone could not (Haiku 4.5, conditional) | Sonnet 5.5: US$2 in / US$10 out per million tokens, US$0.20 per million for cached input. Haiku 4.5: US$1 in / US$5 out | The library list makes each request large, so cost depends on caching (see Speed and cost) | Matching and wording |
+| [OpenRouter](https://openrouter.ai) | What the record is, its main style and the closest picks: `openai/gpt-5.6-luna` (primary) or `anthropic/claude-haiku-5.5` (fallback). Reading a cover the phone could not is not yet assigned a model | Pay per call from prepaid credit. OpenRouter's list price on 18 October 2026: luna US$0.10 in / US$0.60 out per million tokens; Haiku 5.5 US$0.10 in / US$0.50 out. Measured cost per record is under Speed and cost | Requests are routed only to providers that support the JSON schema and do not keep the data. The library list makes each request large, so cost depends on caching | Matching and wording |
 
 **What this means for price.** Discogs shows what sellers are asking and how many collectors own and want a record, not what it sold for. The card shows the counts as plain numbers and labels any price as "lowest listed".
 
 **Discogs terms.** The [Discogs API terms](https://support.discogs.com/hc/en-us/articles/360009334593-API-Terms-of-Use) apply from Phase 1, not only at the App Store:
 
 - **Attribution.** "Data provided by Discogs", with a link to the Discogs page, sits next to any Discogs data on the card.
-- **Your collection now goes to the model.** The terms class a user's collection and wantlist as restricted data that may not be passed to third parties. The by-sound request sends your shelf list (artist, title, year and styles of records you own) to the Claude API. For a personal app using your own data this is a small risk that you are accepting; it must be settled with Discogs, or the shelf left out of the request, before any public release. Marketplace data (prices, copies for sale) is never put in a request.
+- **Your collection now goes to the model.** The terms class a user's collection and wantlist as restricted data that may not be passed to third parties. The by-sound request sends your shelf list (artist, title, year and styles of records you own) through OpenRouter to the model's provider. For a personal app using your own data this is a small risk that you are accepting; it must be settled with Discogs, or the shelf left out of the request, before any public release. Marketplace data (prices, copies for sale) is never put in a request.
 - **Freshness.** Data may not be shown if it is more than 6 hours older than the live site, and may not be stored longer than needed. Release data is fetched live on each scan and your collection is refreshed when the app opens.
 - **Fees.** The terms prohibit charging for an app where Discogs offers the same access free, without written permission. A paid app may not be allowed.
 
 ## Speed and cost budget
 
-The by-sound request changes the cost picture. The earlier revisions budgeted about US$0.0025 per scan; sending your whole library to Sonnet on every scan costs many times that. The figures below are estimates from the published prices and a request of about 130,000 characters, which I take to be about 45,000 tokens. Neither the token count nor the caching behaviour has been measured.
+The by-sound request sends your whole library on every scan, so it is the only step with a real running cost. Earlier revisions estimated US$0.01 to US$0.11 per scan with Sonnet 5.5. The prototype models are far cheaper. The figures below are measured: four harness runs on 18 October 2026, 20 records each, with the cost OpenRouter reported for each call (`data/runs/`).
 
-**Cost per scan (estimates)**
+**Measured request size.** The full request is about 24,400 input tokens as luna counts them and about 39,400 as Haiku counts them, against the 45,000 estimated earlier. The answer is about 400 to 500 output tokens from luna and about 900 from Haiku.
 
-| Step | Runs on | Estimated cost |
+**Cost per scan (measured)**
+
+| Step | Runs on | Cost |
 | --- | --- | --- |
 | Barcode or text recognition, ownership check, fact lines, territory | Your phone | US$0 |
-| Apple Music and Discogs lookups, including price | Your phone, calling the services directly | US$0 per call |
-| What it is, main style and picks, with the library list not cached | Claude Sonnet 5.5 | about US$0.09 |
-| The same, when the library list is read from the cache | Claude Sonnet 5.5 | about US$0.01 |
-| The first scan of a session, which writes the cache | Claude Sonnet 5.5 | about US$0.11 |
-| Vision fallback when barcode and text recognition fail (assumed 1 scan in 5) | Claude Haiku 4.5 | about US$0.0013 |
+| Apple Music and Discogs lookups, including price | The backend, calling the services directly | US$0 per call |
+| What it is, main style and picks, library list read from the cache | `gpt-5.6-luna` | median US$0.0011 (US$0.0009 to US$0.0037) |
+| The same, library list not cached | `gpt-5.6-luna` | median US$0.0066 (US$0.0065 to US$0.0082) |
+| The same, on the fallback (no cache hits were reported) | `claude-haiku-5.5` | median US$0.0044 (US$0.0040 to US$0.0130) |
+| Vision fallback when barcode and text recognition fail | Not chosen yet | not measured |
 
-**Cost per month at 500 scans (estimates)**
+The top of each range is a record whose first answer was `Other/uncertain`, which triggers the two extra attempts. Caching is up to the provider: in one luna run nearly every request was read from the cache; in the other, minutes later, none was. Haiku requests did not use the cache, because the request does not yet mark the library list for caching, which Anthropic requires.
 
-| Case | Assumption | Estimated cost |
+**Cost per month (average cost per record in each run, extra attempts included)**
+
+| Case | 100 scans | 500 scans |
 | --- | --- | --- |
-| Caching works as hoped | 50 dig sessions of 10 scans, each scan within five minutes of the last | about US$10 |
-| Caching never helps | Every scan pays the full price | about US$45 |
-| F26, if it passes its test | A small model choosing from a short list | well under US$1, plus a one-time labelling cost |
+| luna, cache hits as in the first run | about US$0.12 | about US$0.60 |
+| luna, no cache hits | about US$0.70 | about US$3.40 |
+| Haiku fallback | about US$0.50 | about US$2.40 |
 
-Your typical dig is about 10 closer looks, so 500 scans a month is a heavy month. At 100 scans the range is about US$2 to US$9.
+Your typical dig is about 10 closer looks, so 500 scans a month is a heavy month. Even the worst case is a few dollars a month, which leaves F26 (a cheaper way to make the picks) without a cost reason; it would matter only if a small model on a short list picked better or faster.
 
 **Fixed costs and upkeep**
 
 - Apple Developer Program: US$99 a year.
-- The prototype uses a local backend rather than a hosted server; its model and Discogs credentials stay in the backend environment. The later native product needs a hosted backend before wider distribution.
+- OpenRouter credit, topped up in advance; at the measured rates a few dollars lasts months.
+- The prototype backend runs on your own Linux laptop rather than a hosted server, so there is no hosting cost. The later native product needs a hosted backend before wider distribution.
 - The later product uses TestFlight, so updates install over the air. Builds expire after 90 days, so a fresh build is uploaded at least every three months.
 - Build effort: not estimated.
 
@@ -377,7 +382,7 @@ Your typical dig is about 10 closer looks, so 500 scans a month is a heavy month
 | Ownership, fact lines and territory | 1 s after the record is identified | Your collection and library are on the phone |
 | Catalogue match and previews | 1.5 s | Apple Music |
 | Credits, price and market numbers | 3 s | Discogs search then release |
-| What it is, and the picks | not measured | The fastest tier answered in about 3 s. Sonnet reading 45,000 tokens will be slower, less so when the list is cached. The card is usable without this section and fills it in when it arrives |
+| What it is, and the picks | 5 to 6 s median after the record is confirmed | Measured in the harness on 18 October 2026: median 5.3 to 5.9 s for luna and 5.5 to 6.2 s for Haiku. The slowest single attempt was 11.5 s; records that needed the two extra attempts took 12 to 23 s in total. This misses the 4-second target for the full card. The card is usable without this section and fills it in when it arrives |
 | Vision fallback, when used | adds 2 to 3 s | Starts after barcode and text recognition give up at about 2 s |
 
 A good connection is assumed. If a service fails or is slow, the card shows the sections that arrived and marks the rest as loading.
@@ -388,7 +393,8 @@ The prototype is an iPhone-usable web app with a local backend running on your c
 
 - **Browser client:** responsive web UI with barcode/photo input where browser support permits, plus catalogue-number and typed artist/title fallback.
 - **Local backend:** handles Discogs and model requests, imports and refreshes local snapshots, validates model IDs, and serves the evidence card.
-- **Secrets:** Discogs and model credentials remain in backend environment variables and are never sent to browser JavaScript.
+- **Secrets:** the OpenRouter key is kept in an environment file on the server machine (`~/.config/crate-digger/env`, readable only by your user account), which only the backend service loads. The Discogs token is in `discogs_token.txt` in the project folder, also readable only by you and never committed. Neither is ever sent to browser JavaScript. On the Mac, the scripts can instead read the OpenRouter key from the macOS Keychain.
+- **Where it runs:** the backend runs on your Linux laptop and listens only on that machine; Tailscale makes it reachable from your phone and Mac over your private network, and it is not exposed to the public internet.
 - **Local data:** imported Discogs collection data and Apple Music library data are stored in snapshots. The Apple Music snapshot includes saved/playlist albums, play counts and liked/favourite tracks.
 - **Live data:** the inspected Discogs release is looked up live. Samples and market data are shown when available and are optional for the prototype pass.
 - **Model request:** built by the backend from the two snapshots and the inspected record; the response is structured and checked so only IDs from the supplied snapshots can be shown.
@@ -398,15 +404,14 @@ The rules and test files from Phase 0 are in your CrateDigger folder: `engine.py
 
 ## Privacy and data handling
 
-For the prototype, the browser connects to a local backend on your computer. Imported snapshots and live lookups are sent only to the services required by the prototype, and model credentials remain in the backend environment. The later native product will need the fuller privacy and terms review described below. The shelf and library lists go to the configured model API on each recommendation request.
+For the prototype, the browser connects over Tailscale to the backend on your Linux laptop. Imported snapshots and live lookups are sent only to the services required by the prototype, and model credentials remain on the backend. The later native product will need the fuller privacy and terms review described below. The shelf and library lists go through OpenRouter to the model's provider on each recommendation request; requests are routed only to providers that do not keep the data.
 
-- The prototype's Discogs token and model credentials are stored in the local backend environment, not browser JavaScript. They are used to refresh snapshots, look up releases and request recommendations; prototype actions do not modify Discogs.
+- The prototype's Discogs token and OpenRouter key are stored on the backend machine in files only your user account can read (see Platform and architecture), not in browser JavaScript. They are used to refresh snapshots, look up releases and request recommendations; prototype actions do not modify Discogs.
 - The Apple Music Library.xml export is uploaded to the local backend and refreshed explicitly; direct on-device MusicKit access is deferred to the native product.
 - Scans send the required identifier to the local backend, which calls Discogs. A barcode is preferred, followed by catalogue number and typed artist/title.
 - Each recommendation request sends the configured model the shelf list, library list (including plays and liked/favourite tracks), and inspected record details. Prices, market data, wantlist data and dig history are not sent.
 - The prototype stores snapshots and temporary results locally. It does not store decisions, dig history or an Explore later list.
 - If a cover image is used, the local backend may send a downscaled image only to the configured vision service; this is not required for the first recommendation harness.
-- Discogs data carries the attribution their terms require.
 - Discogs data carries the attribution their terms require.
 - The App Store version adds a privacy policy, account deletion and a review of how other users' Discogs and library data is handled.
 
@@ -431,7 +436,7 @@ The biggest risks are that records are not identified quickly or to the right ed
 | Not on Apple Music, or no preview (Three Blind Mice and similar labels) | Cannot hear it in the app | Open the video Discogs lists, otherwise a YouTube search. In Phase 0, 3 of 14 Three Blind Mice records were found on Apple and all 14 had a Discogs video |
 | Discogs terms: your collection in a model request, the 6-hour data limit, attribution, no fees on API apps | Complicates a public or paid release | Personal token and live fetches in TestFlight; settle the terms before the App Store |
 | Apple Music library access may not expose liked tracks or playlist contents (*to verify*) | A thinner library list | Import the Library.xml export |
-| Claude API key stored on the phone | Key could be extracted from a lost or shared phone | Personal use only; spend limit on the key; move to a backend before any wider release |
+| The OpenRouter key sits on your laptop, and the app has no login | Anyone who reaches the app can spend your credit | The key never leaves the backend; the app is reachable only over your Tailscale network, not the public internet; set a credit limit on the key in OpenRouter; add accounts before any wider release |
 
 **Decided for the later product unless superseded by the prototype scope above**
 
@@ -510,6 +515,13 @@ Fifteen records is a small sample. A result of 15 of 15 is consistent with a tru
 | 3. Wider release | P1/P2 requirements: cheaper picks, wantlist suggestions, dig history, richer price, sonic similarity, App Store backend/accounts and Android |  |
 
 ## Revision notes
+
+Revision 7, 18 October 2026:
+
+- Model calls go through OpenRouter. Primary `openai/gpt-5.6-luna` and fallback `anthropic/claude-haiku-5.5` were verified on OpenRouter's live model list; requests go only to providers that honour the JSON schema and do not keep the data. The web app calls the primary; the fallback is compared in the harness.
+- Key storage written down: the OpenRouter key in an environment file on the backend machine, the Discogs token in an uncommitted file, both readable only by your account. The backend runs on your Linux laptop, reachable only over Tailscale.
+- Cost and speed now measured: about US$0.001 to US$0.007 per record with luna depending on caching, about US$0.004 to US$0.005 with Haiku, so a heavy month is a few dollars. The picks take a median of 5 to 6 s, over the 4-second target.
+- F26 no longer has a cost reason.
 
 Revision 6, prototype scope review:
 
