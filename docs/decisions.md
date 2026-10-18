@@ -16,3 +16,4 @@ Settled decisions, newest last. Append; don't rewrite. Reopen one by adding a ne
 - **2026-10-18** Style definitions (one line per family) are part of the prompt. New family House-jazz (Discogs Future Jazz); St Germain is labelled House-jazz.
 - **2026-10-18** Luna stays the primary: on run 3 it beat Haiku on false matches (3/20 vs 5/20) at similar style accuracy.
 - **2026-10-18** Project instructions live in `AGENTS.md` (portable across Claude Code, Codex and pi); `CLAUDE.md` imports it. Results are generated into `docs/STATUS.md`, never copied by hand.
+- **2026-10-18** herdr is the default channel between agents (Claude and Codex): `herdr agent list/prompt/read/start`; workers run in herdr panes so they show in its agent panel. `SendMessage` and `scripts/watch-codex.py` are fallbacks outside herdr.
