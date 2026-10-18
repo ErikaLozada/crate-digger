@@ -28,9 +28,11 @@ SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': ['sentenc
 SYSTEM = ('You help a record collector decide on a record in a shop. Given the record, return: one sentence '
           '(25 words at most) on what it is; its main style, one of the allowed families or Other/uncertain if you '
           'are not sure; and up to three picks from the collector\'s SHELF (S ids) and APPLE MUSIC LIBRARY (L ids) that '
-          'are closest in sound, same sub-style and not a neighbour, each with a short reason. Closest, not most '
-          'played. Use only ids from the two lists. Return fewer than three, or none, if nothing is truly close. '
-          'Never return the record itself.')
+          'are closest in sound, each with a short reason. Closest, not most played. Use only ids from the two lists. '
+          'Never return the record itself. A pick must be in the same sub-style and sound close; sharing only a broad '
+          'genre, country, era, label, instrument or mood is not enough, and a neighbouring style is not close. '
+          'Be truthful: if nothing in the lists is truly close, return an empty picks list. An empty list is a correct '
+          'and useful answer; never add a weaker pick to fill the list.')
 
 def load_snapshots():
     R = json.load(open('data/results.json'))
@@ -98,7 +100,7 @@ def run_one(model, rid, shelf, want, lib, recs, ask=ask):
                        'completion': sum(u.get('completion_tokens') or 0 for u in used),
                        'cached': sum((u.get('prompt_tokens_details') or {}).get('cached_tokens') or 0 for u in used)}}
 
-def report(rows, expected):
+def report(rows, expected, no_close=()):
     n = len(rows)
     ok = [x for x in rows if x['result']]
     specific = [x for x in ok if x['result']['style'] != 'Other/uncertain']
@@ -106,10 +108,15 @@ def report(rows, expected):
     right = [x for x in scored if x['result']['style'] == expected[x['id']]]
     secs = sorted(x['seconds'] for x in rows)
     print('\nrecords %d | recommendations available %d | specific style %d (target 18 of 20)' % (n, len(ok), len(specific)))
-    if scored: print('style accuracy %d of %d (target 90%%)' % (len(right), len(scored)))
+    if scored: print('style accuracy %d of %d (target 90%%; records labelled Other/uncertain are left out)' % (len(right), len(scored)))
     else: print('style accuracy: no expected_style labels, not scored')
-    print('no matches returned %d | median %.1fs | max %.1fs (timeout %ds)' % (
-        sum(1 for x in ok if not x['result']['picks']), secs[len(secs) // 2], secs[-1], TIMEOUT))
+    for x in ok:
+        if x['id'] not in expected and x['result']['style'] != 'Other/uncertain':
+            print('  suggested label for %s - %s: %s' % (x['artist'], x['title'], x['result']['style']))
+    nc = [x for x in ok if x['id'] in no_close]
+    print('nothing close: answered for %d of %d records you said have no close match; %d other records got no picks' % (
+        sum(1 for x in nc if not x['result']['picks']), len(nc), sum(1 for x in ok if not x['result']['picks'] and x['id'] not in no_close)))
+    print('median %.1fs | max %.1fs (timeout %ds)' % (secs[len(secs) // 2], secs[-1], TIMEOUT))
     print('cost US$%.4f total, US$%.4f per record' % (sum(x['cost'] for x in rows), sum(x['cost'] for x in rows) / n))
     print('false close matches need your judgement: review the picks in the run file')
 
@@ -121,7 +128,8 @@ def main():
     shelf, want, lib, recs = load_snapshots()
     es = json.load(open('data/eval_set.json')) if os.path.exists('data/eval_set.json') else [{'id': i} for i in want]
     ids = [int(i) for i in a.ids.split(',')] if a.ids else [e['id'] for e in es]
-    expected = {e['id']: e['expected_style'] for e in es if e.get('expected_style')}
+    expected = {e['id']: e['expected_style'] for e in es if e.get('expected_style') not in (None, 'Other/uncertain')}
+    no_close = {e['id'] for e in es if e.get('close_match_known') is False}
     model = PRIMARY if a.model == 'primary' else FALLBACK
     if a.dry_run:
         lists = lists_text(shelf, lib); r = recs[str(ids[0])]
@@ -133,7 +141,7 @@ def main():
         x = run_one(model, rid, shelf, want, lib, recs); rows.append(x)
         print('%-9s %-40.40s %-32s %5.1fs %s' % (rid, x['artist'] + ' - ' + x['title'],
               x['result']['style'] if x['result'] else '-', x['seconds'], x['status']))
-    report(rows, expected)
+    report(rows, expected, no_close)
     os.makedirs('data/runs', exist_ok=True)
     path = 'data/runs/%s-%s.json' % (model.replace('/', '_'), time.strftime('%Y%m%d-%H%M%S'))
     json.dump({'model': model, 'rows': rows}, open(path, 'w'), ensure_ascii=False, indent=1)
