@@ -6,8 +6,16 @@
 # write git metadata, so it leaves its work uncommitted and the lead commits it. Claude: auto permission mode, commits itself.
 set -e
 cd "$(dirname "$0")/.."
-NAME="$1"; KIND="$2"; OWNER="${3:-$KIND worker}"; MODEL="$4"; EFFORT="$5"
-[ -n "$NAME" ] && [[ "$KIND" =~ ^(codex|claude)$ ]] || { echo "usage: make worker NAME=<short-name> KIND=codex|claude [OWNER=...]"; exit 1; }
+NAME="$1"; KIND="$2"; OWNER="$3"; MODEL="$4"; EFFORT="$5"
+case "${TIER:-}" in                                         # the user's model table (AGENTS.md); explicit values win
+  simple)  KIND="${KIND:-codex}";  MODEL="${MODEL:-gpt-6-luna}";       EFFORT="${EFFORT:-high}" ;;
+  medium)  KIND="${KIND:-claude}"; MODEL="${MODEL:-claude-haiku-5-5}"; EFFORT="${EFFORT:-high}" ;;
+  complex) KIND="${KIND:-claude}"; MODEL="${MODEL:-claude-opus-5-5}";  EFFORT="${EFFORT:-high}" ;;
+  "") ;;
+  *) echo "TIER must be simple, medium or complex"; exit 1 ;;
+esac
+OWNER="${OWNER:-$KIND worker}"
+[ -n "$NAME" ] && [[ "$KIND" =~ ^(codex|claude)$ ]] || { echo "usage: make worker NAME=<short-name> TIER=simple|medium|complex (or KIND=codex|claude) [OWNER=...] [MODEL=...] [EFFORT=...]"; exit 1; }
 MAIN="$PWD"; WT="$(dirname "$MAIN")/$(basename "$MAIN")-$NAME"
 case "$KIND" in
   codex)  ARGS=(--sandbox workspace-write --ask-for-approval on-request -c sandbox_workspace_write.network_access=true)

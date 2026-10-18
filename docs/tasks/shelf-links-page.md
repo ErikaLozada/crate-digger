@@ -8,6 +8,9 @@ Base: 2ed31b0
 Reference: 6127802
 Scope: static/index.html tests/navigation.test.cjs tests/links.test.cjs
 Check:
+Hidden: none (the reference page tests read one element structure; graded by what the card shows instead)
+Render: 1216425 12596028
+RenderBackend: 1e57050
 
 ## Goal
 On the record card, show which records on the shelf share musicians, producers or a label with this record, especially useful for jazz ("Herbie Hancock · Piano — on Speak No Evil"). The data comes from a new `links` field of `GET /api/release/<id>` (contract below), built in parallel by another worker (branch shelf-links-api). Build against the contract and the sample; don't wait for the backend.

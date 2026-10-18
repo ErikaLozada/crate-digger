@@ -56,8 +56,20 @@ Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.con
 - One lead owns `main`, merges and `make deploy`. Others do not restart the live service.
 - Shared files have one writer at a time: `data/eval_set.json` (the user), the review files, `data/recommendations.json` (the server).
 - Message peers before touching shared state, and when a branch is ready.
-- Choosing worker models: a cheaper model or lower effort is used for a kind of task only after `make replay` shows it passing every gate (hidden tests, whole suite, real-data output, scope, blind review) on all archived tasks of that kind, two runs each. `make finish` archives each brief so every task becomes a replay case; fill in its `Scope:` and `Check:` lines.
+- Changing the model table below: only after `make replay` shows the new setup passing every gate on the archived tasks of that tier, two runs each. `make finish` archives each brief so every task becomes a replay case; fill in its `Scope:` and `Check:` lines.
 - A prompt change (`harness.SYSTEM`, `harness.lists_text`, `styles.DEFINITIONS`) makes every saved answer miss once; batch prompt changes.
+
+## Choosing models (decided by the user, 2026-10-18)
+
+The lead (orchestrator) runs on Claude Opus 5.5, or a newer top Claude model as one is released. Workers are picked by task tier; `make worker NAME=x TIER=simple|medium|complex` applies the preset.
+
+| Tier | When | Worker |
+| --- | --- | --- |
+| simple | One small, mechanical change with an exact spec and no judgement: a rename, a copy edit, a config value, one function with given inputs and outputs | Codex `gpt-6-luna`, effort high |
+| medium | A feature or fix of up to a few hundred lines with a written contract, tests and lead review (the shelf-links tasks) | Claude Haiku 5.5, effort high (`claude-haiku-5-5`); Sonnet 5.5, effort medium (`claude-sonnet-5-5`) when speed matters or the spec is looser |
+| complex | Open design, unclear requirements, cross-cutting changes, or reasoning the contract can't pin down | Claude Opus 5.5, effort high (`claude-opus-5-5`) |
+
+Escalate on evidence: a worker that fails its tests twice, keeps asking QUESTION: about the spec, or whose review finds a correctness bug is restarted one tier up. Measured on replays of three tasks (docs/tasks/replays.md): Haiku 6/6, Sonnet 6/6, luna 6/7 (one small real bug on a medium task), sol 5/6.
 
 ## Conventions
 

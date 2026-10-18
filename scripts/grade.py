@@ -30,7 +30,7 @@ def brief(task):
     text = open(os.path.join(TASKS, task + '.md'), encoding='utf-8').read()
     field = lambda k: (re.search(r'^%s:[ \t]*(.*)$' % k, text, re.M) or [None, ''])[1].split()
     return {'base': field('Base')[0], 'refs': field('Reference'), 'scope': set(field('Scope')), 'check': field('Check'),
-            'hidden': (field('Hidden') or ['yes'])[0] != 'none'}
+            'hidden': (field('Hidden') or ['yes'])[0] != 'none', 'render': field('Render'), 'render_backend': (field('RenderBackend') or [None])[0]}
 
 def link_data(folder):
     """Symlink the main copy's untracked data into a checkout, as make task does."""
@@ -54,6 +54,41 @@ def same_links(gold, out):
     shape = lambda d: {rid: {k: [{**e, 'records': [r['year'] for r in e['records']]} for e in es] for k, es in v.items()}
                        for rid, v in d.items()} if isinstance(d, dict) and 'error' not in d else d
     return shape(gold) == shape(out)
+
+PROBE = ('<script>setTimeout(() => { const p = document.createElement("pre"); p.id = "__visible";'
+         ' p.textContent = document.body.innerText; document.body.appendChild(p); }, 8000);</script>')
+
+def visible_text(page_folder, backend, ids):
+    """What a reader sees on each card: the page from page_folder served by the backend commit, rendered in headless
+    Chromium. No model key is passed, so no model calls are made; the picks section just says unavailable."""
+    out = {}
+    with tempfile.TemporaryDirectory() as tmp:
+        srv = os.path.join(tmp, 'srv')
+        sh('git', 'worktree', 'add', '-q', '--detach', srv, backend)
+        try:
+            link_data(srv)
+            html = open(os.path.join(page_folder, 'static', 'index.html'), encoding='utf-8').read()
+            open(os.path.join(srv, 'static', 'index.html'), 'w', encoding='utf-8').write(html.replace('</body>', PROBE + '</body>'))
+            port = next(p for p in range(8300, 8400) if subprocess.run(['bash', '-c', 'ss -ltn | grep -q ":%d "' % p]).returncode)
+            env = {k: v for k, v in os.environ.items() if k != 'OPENROUTER_API_KEY'}
+            proc = subprocess.Popen([sys.executable, 'server.py'], cwd=srv, env={**env, 'CD_HOST': '127.0.0.1', 'CD_PORT': str(port)},
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                sh('curl', '-sf', '-o', '/dev/null', '--retry', '20', '--retry-connrefused', '--retry-delay', '1', 'http://127.0.0.1:%d/' % port)
+                for i in ids:
+                    dom = sh('chromium', '--headless', '--disable-gpu', '--no-sandbox', '--virtual-time-budget=15000', '--dump-dom',
+                             'http://127.0.0.1:%d/#/release/%s' % (port, i), check=False).stdout
+                    m = re.search(r'<pre id="__visible">(.*?)</pre>', dom, re.S)
+                    text = re.sub(r'&(amp|lt|gt|quot|#39);', lambda e: {'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', '#39': "'"}[e[1]], m[1]) if m else ''
+                    lines = [l.strip() for l in text.splitlines() if l.strip()]
+                    start = next((n for n, l in enumerate(lines) if l.lower() == 'connections on your shelf'), None)
+                    end = next((n for n, l in enumerate(lines) if l.lower() == 'closest in your collection'), len(lines))
+                    out[i] = lines[start:end] if start is not None else []
+            finally:
+                proc.terminate(); proc.wait()
+        finally:
+            sh('git', 'worktree', 'remove', '--force', srv)
+    return out
 
 def golden(task):
     b = brief(task)
@@ -111,6 +146,10 @@ def run(task, folder):
     if b['check']:
         gold = json.load(open(gold_path, encoding='utf-8')) if os.path.exists(gold_path) else None
         golden_ok = gold is not None and same_links(gold, links_output(folder, b["check"]))
+    elif b['render']:                                         # page tasks: what the card shows, rendered in Chromium
+        render_path = os.path.join(TASKS, 'golden', task + '.render.json')
+        gold = json.load(open(render_path, encoding='utf-8')) if os.path.exists(render_path) else None
+        golden_ok = gold is not None and visible_text(folder, b['render_backend'], b['render']) == gold
     else:
         golden_ok = None
     outside = sorted(changed_files(folder, b['base']) - b['scope'])

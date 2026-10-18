@@ -14,7 +14,8 @@ class GradeTests(unittest.TestCase):
     def test_brief_fields(self):
         with open(os.path.join(self.dir, 't.md'), 'w') as f:
             f.write('# Task: t\nBase: abc123\nReference: r1 r2\nScope: a.py tests/b.py\nCheck:\n\n## Goal\nScope: not this\n')
-        self.assertEqual(grade.brief('t'), {'base': 'abc123', 'refs': ['r1', 'r2'], 'scope': {'a.py', 'tests/b.py'}, 'check': [], 'hidden': True})
+        self.assertEqual(grade.brief('t'), {'base': 'abc123', 'refs': ['r1', 'r2'], 'scope': {'a.py', 'tests/b.py'}, 'check': [], 'hidden': True,
+                                            'render': [], 'render_backend': None})
         with open(os.path.join(self.dir, 'u.md'), 'w') as f:
             f.write('# Task: u\nBase: abc\nReference: r1\nScope: a.py\nCheck: 1 2\nHidden: none (tests call an internal name)\n')
         self.assertEqual((grade.brief('u')['check'], grade.brief('u')['hidden']), (['1', '2'], False))
