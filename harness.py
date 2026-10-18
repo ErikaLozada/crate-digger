@@ -47,7 +47,8 @@ def lists_text(shelf, lib, skip=None):
          for k, r in shelf.items() if k != skip]
     l = ['%s | %s - %s (%s) | %s | %d plays, %d liked' % (k, a['artist'], a['album'], a['year'], a['genre'], a['plays'], a['liked'])
          for k, a in lib.items()]
-    return 'FAMILIES: ' + '; '.join(FAMILIES) + '\n\nSHELF\n' + '\n'.join(s) + '\n\nAPPLE MUSIC LIBRARY\n' + '\n'.join(l)
+    fams = '\n'.join('- %s: %s' % (f, styles.DEFINITIONS[f]) if f in styles.DEFINITIONS else '- ' + f for f in FAMILIES)
+    return 'FAMILIES\n' + fams + '\n\nSHELF\n' + '\n'.join(s) + '\n\nAPPLE MUSIC LIBRARY\n' + '\n'.join(l)
 
 def record_text(r):
     return 'RECORD\n%s - %s (%s), %s, %s. Genres: %s. Discogs styles: %s.' % (
@@ -85,7 +86,9 @@ def run_one(model, rid, shelf, want, lib, recs, ask=ask):
     r = recs[str(rid)]
     own = 'S%s' % rid if 'S%s' % rid in shelf else None
     lists = lists_text(shelf, lib, own)
-    valid = set(k for k in shelf if k != own) | set(lib)
+    # The record's own copy in the library stays in the list (so the prompt prefix is unchanged) but is never a pick.
+    copy = library.find_album(list(lib.values()), [r['artist']], [r['title']])
+    valid = set(k for k in shelf if k != own) | (set(lib) - ({'L' + copy['k']} if copy else set()))
     t0 = time.time()
     try:
         rec, runs = recommend(model, lists, record_text(r), valid, own, ask)
