@@ -1,9 +1,9 @@
-"""Builds data/compact.json from the raw downloads fetch_discogs.sh saves in data/releases, data/masters and data/itunes.
+"""Builds data/compact.json from the raw downloads in data/releases, data/masters and data/itunes.
 
-Run after fetch_discogs.sh, then restart the service (or press Refresh) to load it.
+The server's Refresh runs this after fetching new records. To run it by hand after fetch_discogs.sh:
+  python3 build_compact.py      then press Refresh in the app (or restart the service)
 """
 import json, os
-from server import compact
 
 D = 'data/'
 
@@ -14,7 +14,7 @@ def raw(folder, i):
     r = json.load(open('%s%s/%s.json' % (D, folder, i), encoding='utf-8'))
     return None if r.get('missing') else r
 
-def release(r):
+def release(r, compact):
     c = compact(r)
     c['videos'] = c['videos'][:3]          # nvideos keeps the full count
     c['series'] = [[s['id'], s['name']] for s in r.get('series', [])]
@@ -33,16 +33,25 @@ def itunes(r):
              'id': a.get('collectionId'), 'url': a.get('collectionViewUrl'), 'n': a.get('trackCount'),
              'genre': a.get('primaryGenreName')} for a in r.get('results', [])]
 
-out = {'releases': {}, 'masters': {}, 'itunes': {}}
-for i in ids('releases'):
-    r = raw('releases', i)
-    if r: out['releases'][i] = release(r)
-for i in ids('masters'):
-    m = raw('masters', i)
-    if m: out['masters'][i] = master(m)
-for i in ids('itunes'):
-    out['itunes'][i] = itunes(json.load(open('%situnes/%s.json' % (D, i), encoding='utf-8')))
+def build(compact):
+    """compact: server.compact, which turns a Discogs API release into the shape engine.Rec reads."""
+    out = {'releases': {}, 'masters': {}, 'itunes': {}}
+    for i in ids('releases'):
+        r = raw('releases', i)
+        if r: out['releases'][i] = release(r, compact)
+    for i in ids('masters'):
+        m = raw('masters', i)
+        if m: out['masters'][i] = master(m)
+    for i in ids('itunes'):
+        out['itunes'][i] = itunes(json.load(open('%situnes/%s.json' % (D, i), encoding='utf-8')))
+    return out
+
+def write(out):
+    json.dump(out, open(D + 'compact.json.tmp', 'w', encoding='utf-8'), ensure_ascii=False)
+    os.replace(D + 'compact.json.tmp', D + 'compact.json')
 
 if __name__ == '__main__':
-    json.dump(out, open(D + 'compact.json', 'w', encoding='utf-8'), ensure_ascii=False)
+    from server import compact
+    out = build(compact)
+    write(out)
     print('compact.json: %d releases, %d masters, %d iTunes lookups' % tuple(len(out[k]) for k in out))

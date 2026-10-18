@@ -6,9 +6,9 @@ Serves static/index.html and a small JSON API. The Discogs token (discogs_token.
 model keys stay here; the browser never sees them. The inspected release is looked up live on
 Discogs; if that fails, the copy saved by fetch_discogs.sh is used and the card says so.
 """
-import csv, json, os, re, socket, sys, urllib.parse, urllib.request
+import csv, json, os, re, socket, sys, time, urllib.error, urllib.parse, urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-import engine, library, harness
+import engine, library, harness, build_compact
 import styles as ST
 
 PORT = int(os.environ.get('CD_PORT', 8000))
@@ -27,8 +27,47 @@ def load():
     SHELF = [engine.Rec(D['releases'][r['release_id']], D['masters'], 'shelf', r) for r in col if r['release_id'] in D['releases']]
     SHELF_IDS = {t.id for t in SHELF}
     LIB = library.load('data/Library.xml')
-    H = harness.load_snapshots()           # shelf, want, lib, recs in the harness's own shape
-    print('snapshots: %d shelf records, %d library albums' % (len(SHELF), len(LIB)))
+    shelf, want, lib, recs = harness.load_snapshots()   # the harness's own shape; its shelf is the fixed test snapshot
+    live = {str(t.id): engine.describe(t) for t in SHELF}
+    H = ({'S' + k: r for k, r in live.items()}, want, lib, {**recs, **live})
+    print('snapshots: %d shelf records, %d library albums' % (len(SHELF), len(LIB)), flush=True)
+
+def fetch_new():
+    """Saves what fetch_discogs.sh saves for shelf and wantlist records that have no details yet.
+    Returns (added ids, failures); a failed record is tried again on the next Refresh."""
+    ids = [r['release_id'] for r in csv.DictReader(open('data/collection.csv', encoding='utf-8-sig'))]
+    ids += [r[7] for r in list(csv.reader(open('data/wantlist.csv', encoding='utf-8-sig')))[1:]]
+    new = [i for i in dict.fromkeys(ids) if i and not os.path.exists('data/releases/%s.json' % i)]
+    save = lambda p, d: json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False)
+    added, failed = [], []
+    for i in new:
+        try:
+            try:
+                raw = get('https://api.discogs.com/releases/%s?curr_abbr=AUD' % i, True, 30)
+            except urllib.error.HTTPError as e:
+                if e.code != 404: raise
+                save('data/releases/%s.json' % i, {'missing': True}); failed.append('%s (not on Discogs)' % i); continue
+            mid = raw.get('master_id')
+            if mid and not os.path.exists('data/masters/%d.json' % mid):
+                time.sleep(1.1)
+                save('data/masters/%d.json' % mid, get('https://api.discogs.com/masters/%d?curr_abbr=AUD' % mid, True, 30))
+            term = '%s %s' % (engine.clean_name(raw.get('artists_sort')), raw['title'])
+            save('data/itunes/%s.json' % i, get('https://itunes.apple.com/search?' + urllib.parse.urlencode(
+                {'term': term, 'entity': 'album', 'country': 'AU', 'limit': 5}), timeout=30))
+            save('data/releases/%s.json' % i, raw)          # last, so a record that failed part-way is fetched again
+            with open('release_ids.txt', 'a') as f: f.write(i + '\n')
+            with open('itunes_terms.tsv', 'a') as f: f.write('%s\t%s\n' % (i, term))
+            added.append(i)
+        except Exception as e:
+            failed.append('%s (%s)' % (i, e))
+        time.sleep(3.2)                                     # Discogs allows 60 calls a minute, Apple about 20
+    return added, failed
+
+def refresh():
+    added, failed = fetch_new()
+    if added: build_compact.write(build_compact.build(compact))
+    load()
+    return {'shelf': len(SHELF), 'library': len(LIB), 'added': len(added), 'failed': failed}
 
 # ----------------------------------------------------------------------------
 # Outside services
@@ -185,7 +224,7 @@ class Handler(BaseHTTPRequestHandler):
             if m and (method == 'POST') == (m.group(1) == 'recommend'):
                 return self.send(200, {'release': release, 'samples': samples, 'recommend': recommend}[m.group(1)](int(m.group(2))))
             if method == 'POST' and p == '/api/refresh':
-                load(); return self.send(200, {'shelf': len(SHELF), 'library': len(LIB)})
+                return self.send(200, refresh())
             self.send(404, {'error': 'not found'})
         except Exception as e:
             self.send(502, {'error': str(e)})
