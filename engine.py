@@ -160,7 +160,7 @@ def shelf_links(t, shelf):
         op = {**{i: None for i in o.main}, **o.players}
         for i in tp:
             if i in op and not (i in t.main and i in o.main):
-                e = mus.setdefault(i, {'name': t.names.get(i) or o.names.get(i), 'role': (t.players.get(i) or [''])[0], 'lead': False, 'recs': {}})
+                e = mus.setdefault(i, {'name': t.names.get(i) or o.names.get(i) or '', 'role': (t.players.get(i) or [''])[0], 'lead': False, 'recs': {}})
                 e['lead'] |= i in t.main or i in o.main
                 e['role'] = e['role'] or (o.players.get(i) or [''])[0]
                 e['recs'].setdefault(a, o)
