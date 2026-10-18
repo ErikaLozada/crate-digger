@@ -1,0 +1,174 @@
+You are labelling albums from one listener's music collection so that a phone app can later find the albums closest in sound to a record she is holding in a shop. Accuracy of the sub-style matters more than anything else: "Jazz" or "Latin" is useless, "Soul-jazz & organ jazz" or "Timba & modern Cuban" is what the app needs.
+
+For every line in the input file, write one JSON object on one line to the output file, in the same order. Fields:
+- "id": the id at the start of the line, copied exactly (L… or S…).
+- "s": the ONE sub-style from the SUB-STYLES list that best describes how this album sounds. Copy the text exactly.
+- "s2": a second sub-style from the same list if the album sits clearly between two, otherwise null.
+- "t": 2 to 5 tags from the TAGS list, copied exactly: the format or lead instrument, the feel, and the country or region the music comes from where that shapes the sound.
+- "e": the decade the music was first recorded, as a number such as 1970. The year in the input is often a reissue or remaster year; use what you know. For classical works use the decade of the recording if you know it, otherwise null.
+- "d": one sentence of at most 16 words saying what the album sounds like, specific enough to tell it from its neighbours. No praise words.
+- "k": 2 if you know this album, 1 if you only know the artist, 0 if you know neither and are going by the genre in the input.
+
+Rules: judge by the sound of this album, not by the artist's best-known style. The genre at the end of each line is Apple's or Discogs' and is often too broad or wrong; treat it as a hint only. Never invent a sub-style or tag that is not in the lists. Use "Other" only when nothing fits. Do not skip any line.
+
+Work from your own knowledge; do not search the web. Write the whole output file with the Write tool (JSON Lines: one object per line, no surrounding array, no commentary). When done, reply with just the number of lines written.
+
+SUB-STYLES:
+Bebop
+Hard bop
+Soul-jazz & organ jazz
+Modal & post-bop
+Cool & West Coast jazz
+Swing & big band
+Vocal jazz
+Mainstream acoustic piano jazz
+Modern piano trio jazz
+ECM & European contemporary jazz
+Contemporary jazz
+Spiritual jazz
+Free & avant-garde jazz
+Jazz-funk
+Jazz fusion & jazz-rock
+Japanese fusion
+Smooth & crossover jazz
+Nu jazz & future jazz
+Latin jazz
+Salsa dura
+Salsa romántica
+Timba & modern Cuban
+Son cubano & traditional Cuban
+Mambo & Latin big band
+Merengue
+Bachata
+Cumbia & vallenato
+Tropical pop & fusion
+Latin pop
+Latin rock & alternative
+Bolero & balada
+Reggaeton & urbano
+Flamenco & Spanish
+Regional Mexican
+Tango
+Latin American folk
+Bossa nova
+MPB
+Samba & Brazilian soul
+City pop
+J-pop
+K-pop & Mandopop
+Anime & game music
+Classic rock
+Soft rock & AOR
+Pop rock
+Mainstream pop
+80s pop & synth-pop
+Dance-pop
+Singer-songwriter
+Indie pop
+Indie & alternative rock
+Britpop
+Grunge & 90s alternative
+Punk & post-punk
+New wave
+Hard rock
+Metal
+Progressive rock
+Art pop
+Folk & Americana
+Country
+Blues
+Reggae
+Classic soul & Motown
+Funk
+Disco
+Contemporary R&B
+Neo-soul
+Hip-hop
+Trip hop
+Downtempo & chillout
+House
+Techno & trance
+Drum and bass
+Ambient
+Electronica
+Baroque
+Classical era
+Romantic
+Impressionist
+20th-century modern classical
+Contemporary classical & minimalism
+Neoclassical piano
+Early music
+Opera
+Choral & sacred
+Classical guitar
+Classical crossover
+Orchestral film score
+Film & TV soundtrack songs
+Musicals
+New age
+Easy listening & lounge
+French chanson & pop
+African & Afrobeat
+Other world music
+Children's music
+Other
+
+TAGS:
+piano trio
+solo piano
+piano-led
+organ
+guitar-led
+sax-led
+trumpet-led
+vibraphone
+bass-led
+flute
+violin
+cello
+big band
+small group
+orchestra
+chamber group
+choir
+female vocal
+male vocal
+vocal group
+instrumental
+acoustic
+electric
+electronic production
+strings
+live
+lyrical
+groove
+funky
+danceable
+mellow
+melancholic
+romantic
+energetic
+atmospheric
+experimental
+bluesy
+polished
+raw
+Japan
+Nordic
+UK
+France
+Italy
+Spain
+Germany
+Cuba
+Puerto Rico & New York
+Colombia
+Dominican Republic
+Venezuela
+Brazil
+Argentina
+Mexico
+Africa
+Korea
+USA

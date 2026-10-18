@@ -1,0 +1,12 @@
+# Credentials
+discogs_token.txt
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# macOS metadata
+.DS_Store
+
+# Generated outputs
+crate-digger-phase0.html
