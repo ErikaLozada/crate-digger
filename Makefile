@@ -1,5 +1,5 @@
 # Commands for people and agents alike; see AGENTS.md.
-.PHONY: test report status deploy setup
+.PHONY: test report status deploy setup task finish
 
 test:
 	python3 -W ignore::ResourceWarning -m unittest discover tests   # the code reads with json.load(open(...)) throughout
@@ -17,3 +17,9 @@ deploy:
 setup:
 	git config core.hooksPath .githooks
 	@echo "git hooks on: .githooks/pre-commit runs make test and guards data/eval_set.json"
+
+task:
+	@bash scripts/new-task.sh "$(NAME)" "$(OWNER)"
+
+finish:
+	@bash scripts/finish-task.sh "$(NAME)"

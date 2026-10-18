@@ -15,3 +15,6 @@ crate-digger-phase0.html
 data/*
 !data/eval_set.json
 !data/review*.json
+
+# Per-worktree task record (make task); read by make status, never merged
+TASK.md
