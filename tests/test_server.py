@@ -1,4 +1,4 @@
-import csv, http.client, io, json, os, tempfile, threading, unittest, urllib.error
+import csv, http.client, io, json, os, sys, tempfile, threading, time, unittest, urllib.error
 from unittest import mock
 
 import build_compact, engine, harness, server
@@ -64,6 +64,33 @@ class RefreshTests(InTempData):
         self.assertEqual(self.calls, [])
 
 
+class RefreshSerialTests(RefreshTests):
+    def test_concurrent_refreshes_never_overlap(self):
+        active, worst = [0], [0]
+        def slow():
+            active[0] += 1; worst[0] = max(worst[0], active[0]); time.sleep(0.05); active[0] -= 1
+            return [], []
+        with mock.patch.object(server, 'fetch_new', slow), mock.patch.object(server, 'newer_than_compact', return_value=False), \
+                mock.patch.object(server, 'load'), mock.patch.object(server, 'SHELF', [], create=True), mock.patch.object(server, 'LIB', [], create=True):
+            ts = [threading.Thread(target=server.refresh) for _ in range(3)]
+            for t in ts: t.start()
+            for t in ts: t.join()
+        self.assertEqual(worst[0], 1)
+
+    def test_failed_rebuild_is_retried_next_refresh(self):
+        server.fetch_new()                                   # releases saved, as if the rebuild after it then failed
+        with mock.patch.object(server.build_compact, 'write') as w, mock.patch.object(server, 'load'), \
+                mock.patch.object(server, 'SHELF', [], create=True), mock.patch.object(server, 'LIB', [], create=True):
+            server.refresh()
+            self.assertEqual(w.call_count, 1)                # nothing added, but compact.json is missing
+            self.write('data/compact.json', {}); os.utime('data/compact.json', (time.time() + 10,) * 2)
+            server.refresh()
+            self.assertEqual(w.call_count, 1)                # up to date: no rebuild
+            os.utime('data/masters/20.json', (time.time() + 60,) * 2)
+            server.refresh()
+            self.assertEqual(w.call_count, 2)
+
+
 class BuildCompactTests(InTempData):
     def test_skips_missing_and_keeps_old_shape(self):
         r = raw_release(1, master=10); r['videos'] = [{'uri': 'v%d' % n, 'title': ''} for n in range(5)]
@@ -77,6 +104,11 @@ class BuildCompactTests(InTempData):
         self.assertEqual((len(rel['videos']), rel['nvideos']), (3, 5))
         self.assertEqual(rel['series'], [[7, 'Series']])
         self.assertEqual(out['masters']['10']['artists'], [[1, 'Artist']])
+
+
+class BindTests(unittest.TestCase):
+    def test_default_host_is_loopback(self):
+        self.assertEqual(server.HOST, os.environ.get('CD_HOST', '127.0.0.1'))
 
 
 class SavedAnswerTests(unittest.TestCase):
@@ -99,6 +131,25 @@ class SavedAnswerTests(unittest.TestCase):
         before = self.key()
         with mock.patch.object(harness, 'SYSTEM', harness.SYSTEM + ' changed'):
             self.assertNotEqual(self.key(), before)
+
+
+class RecommendOnceTests(unittest.TestCase):
+    def test_concurrent_identical_requests_make_one_call(self):
+        calls = []
+        def run_one(*a):
+            calls.append(1); time.sleep(0.1)
+            return {'status': 'ok', 'result': None}
+        H = ({}, {}, {}, {'2': {'artist': 'C', 'title': 'V', 'year': 1990, 'label': 'L', 'country': 'AU', 'genres': [], 'styles': []}})
+        tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+        with mock.patch.object(server, 'H', H, create=True), mock.patch.object(server, 'SAVED', {}), \
+                mock.patch.object(server, 'SAVED_PATH', os.path.join(tmp.name, 'r.json')), \
+                mock.patch.object(harness, 'api_key', return_value='k'), mock.patch.object(harness, 'run_one', run_one):
+            out = []
+            ts = [threading.Thread(target=lambda: out.append(server.recommend(2))) for _ in range(2)]
+            for t in ts: t.start()
+            for t in ts: t.join()
+        self.assertEqual(len(calls), 1)
+        self.assertEqual([o['status'] for o in out], ['ok', 'ok'])
 
 
 class CleanPicksTests(unittest.TestCase):
@@ -285,6 +336,21 @@ class DecisionTests(InTempData):
         self.assertEqual(code, 200)
         self.assertEqual(server.decisions()[0], data['decision'])
         self.assertIsNotNone(data['decision']['undone'])
+
+    def test_history_failure_after_discogs_write_is_500_and_logged(self):
+        msg = 'Discogs was updated, but the history could not be saved; do not retry. Details are in the server log.'
+        err = io.StringIO()
+        with mock.patch.object(server, 'save_decisions', side_effect=OSError('disk full')), mock.patch.object(sys, 'stderr', err):
+            for action in ('buy', 'wishlist'):
+                self.assertEqual(self.request('POST', '/api/decision/1', {'action': action}), (500, {'error': msg}))
+            self.assertEqual(self.request('POST', '/api/decision/1', {'action': 'pass'})[0], 502)   # nothing remote to protect
+        self.assertIn('"instance_id": 42', err.getvalue())
+
+    def test_history_failure_after_undo_is_500(self):
+        _, data = self.request('POST', '/api/decision/1', {'action': 'buy'})
+        with mock.patch.object(server, 'save_decisions', side_effect=OSError('disk full')), mock.patch.object(sys, 'stderr', io.StringIO()):
+            code, body = self.request('DELETE', '/api/decision/' + data['decision']['id'])
+        self.assertEqual((code, body), (500, {'error': 'Discogs was updated, but the history could not be saved. Details are in the server log.'}))
 
     def test_content_type_validation_and_unknown_action(self):
         self.assertEqual(self.request('POST', '/api/decision/1', {'action': 'pass'}, 'text/plain')[0], 415)

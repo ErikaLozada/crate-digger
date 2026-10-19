@@ -54,6 +54,15 @@ class T(unittest.TestCase):
         r = self.rows(self.col)[-1]
         self.assertEqual((r[1], r[7], r[8]), ('', '77', 'Uncategorized'))
 
+    def test_csv_failure_after_discogs_success_is_logged_not_raised(self):
+        err = io.StringIO()
+        dw.buy(77)                                          # a row to remove
+        with mock.patch.object(dw, '_write', side_effect=OSError('disk full')), mock.patch.object(sys, 'stderr', err):
+            self.assertEqual(dw.buy(77), {'folder_id': 1, 'instance_id': 123})
+            self.assertEqual(dw.want(77), {})
+            self.assertIsNone(dw.unbuy(77, 1, 123)); self.assertIsNone(dw.unwant(5))
+        self.assertEqual(err.getvalue().count('disk full'), 4)
+
     def test_unbuy_removes_row(self):
         dw.buy(77); self.calls.clear()
         dw.unbuy(77, 1, 123)
