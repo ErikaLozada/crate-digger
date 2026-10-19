@@ -1,6 +1,6 @@
 """Crate Digger prototype: local backend for the iPhone web app.
 
-  python3 server.py            then open http://<this Mac>.local:8000 on the iPhone (same Wi-Fi)
+  python3 server.py            listens on 127.0.0.1:8000; reach it from the iPhone through `tailscale serve`
 
 Serves static/index.html and a small JSON API. The Discogs token (discogs_token.txt) and the
 model keys stay here; the browser never sees them. The inspected release is looked up live on
@@ -12,7 +12,7 @@ import engine, library, harness, build_compact, discogs_write
 import styles as ST
 
 PORT = int(os.environ.get('CD_PORT', 8000))
-HOST = os.environ.get('CD_HOST', '0.0.0.0')   # 127.0.0.1 when only tailscale serve should reach it
+HOST = os.environ.get('CD_HOST', '127.0.0.1')   # only tailscale serve should reach it
 UA = 'CrateDiggerPrototype/0.1 (personal collection)'
 TOKEN = open('discogs_token.txt').read().strip() if os.path.exists('discogs_token.txt') else os.environ.get('DISCOGS_TOKEN', '')
 
@@ -20,17 +20,17 @@ TOKEN = open('discogs_token.txt').read().strip() if os.path.exists('discogs_toke
 # Snapshots, loaded once at start and again on Refresh
 def load():
     global D, SHELF, SHELF_IDS, WANT_IDS, LIB, H
-    D = json.load(open('data/compact.json'))
+    d = json.load(open('data/compact.json'))
     col = list(csv.DictReader(open('data/collection.csv', encoding='utf-8-sig')))
-    missing = [r['release_id'] for r in col if r['release_id'] not in D['releases']]
+    missing = [r['release_id'] for r in col if r['release_id'] not in d['releases']]
     if missing: print('no saved details for shelf releases %s; run fetch_discogs.sh' % ', '.join(missing))
-    SHELF = [engine.Rec(D['releases'][r['release_id']], D['masters'], 'shelf', r) for r in col if r['release_id'] in D['releases']]
-    SHELF_IDS = {t.id for t in SHELF}
-    WANT_IDS = {int(r['release_id']) for r in csv.DictReader(open('data/wantlist.csv', encoding='utf-8-sig')) if r.get('release_id')}
-    LIB = library.load('data/Library.xml')
+    shelf_recs = [engine.Rec(d['releases'][r['release_id']], d['masters'], 'shelf', r) for r in col if r['release_id'] in d['releases']]
+    want_ids = {int(r['release_id']) for r in csv.DictReader(open('data/wantlist.csv', encoding='utf-8-sig')) if r.get('release_id')}
+    lib_albums = library.load('data/Library.xml')
     shelf, want, lib, recs = harness.load_snapshots()   # the harness's own shape; its shelf is the fixed test snapshot
-    live = {str(t.id): engine.describe(t) for t in SHELF}
-    H = ({'S' + k: r for k, r in live.items()}, want, lib, {**recs, **live})
+    live = {str(t.id): engine.describe(t) for t in shelf_recs}
+    h = ({'S' + k: r for k, r in live.items()}, want, lib, {**recs, **live})
+    D, SHELF, SHELF_IDS, WANT_IDS, LIB, H = d, shelf_recs, {t.id for t in shelf_recs}, want_ids, lib_albums, h   # published together
     print('snapshots: %d shelf records, %d library albums' % (len(SHELF), len(LIB)), flush=True)
 
 def fetch_new():
@@ -62,11 +62,20 @@ def fetch_new():
         time.sleep(1.1)                                     # Discogs allows 60 calls a minute with a token
     return added, failed
 
+REFRESH_LOCK = threading.Lock()
+
+def newer_than_compact():
+    """True when compact.json is missing or older than a saved release or master, e.g. after a failed rebuild."""
+    try: t = os.path.getmtime('data/compact.json')
+    except OSError: return True
+    return any(os.path.getmtime(os.path.join(d, f)) > t for d in ('data/releases', 'data/masters') for f in os.listdir(d) if f.endswith('.json'))
+
 def refresh():
-    added, failed = fetch_new()
-    if added: build_compact.write(build_compact.build(compact))
-    load()
-    return {'shelf': len(SHELF), 'library': len(LIB), 'added': len(added), 'failed': failed}
+    with REFRESH_LOCK:
+        added, failed = fetch_new()
+        if added or newer_than_compact(): build_compact.write(build_compact.build(compact))
+        load()
+        return {'shelf': len(SHELF), 'library': len(LIB), 'added': len(added), 'failed': failed}
 
 # ----------------------------------------------------------------------------
 # Outside services
@@ -197,6 +206,9 @@ SAVED_LOCK = threading.Lock()
 
 DECISIONS_LOCK = threading.RLock()
 
+class HistoryError(Exception):
+    """Discogs was changed but the history file was not; the message is safe to show on the card."""
+
 def decisions():
     path = os.environ.get('CD_DECISIONS', 'data/decisions.json')
     with DECISIONS_LOCK:
@@ -235,7 +247,12 @@ def record_decision(rid, body):
         entry = {'id': uuid.uuid4().hex, 'release_id': rid, 'action': action, 'date': now(),
                  'artist': engine.clean_name(rel['artists_sort']), 'title': rel['title'],
                  'price': price, 'tracks': tracks, 'note': note, 'discogs': discogs, 'undone': None}
-        entries = decisions(); entries.append(entry); save_decisions(entries)
+        try:
+            entries = decisions(); entries.append(entry); save_decisions(entries)
+        except Exception as e:
+            if discogs is None: raise
+            print('history not saved (%s: %s); entry: %s' % (type(e).__name__, e, json.dumps(entry)), file=sys.stderr)
+            raise HistoryError('Discogs was updated, but the history could not be saved; do not retry. Details are in the server log.') from None
     if action in ('buy', 'wishlist'):
         try: refresh()
         except Exception as e: print('refresh after %s failed: %s' % (action, e), file=sys.stderr)
@@ -252,11 +269,17 @@ def undo_decision(entry_id):
         elif entry['action'] == 'wishlist':
             discogs_write.unwant(rid)
         entry['undone'] = now()
-        save_decisions(entries)
+        try: save_decisions(entries)
+        except Exception as e:
+            if entry['action'] == 'pass' or entry['action'] == 'explore': raise
+            print('history not saved after undo (%s: %s); entry: %s' % (type(e).__name__, e, json.dumps(entry)), file=sys.stderr)
+            raise HistoryError('Discogs was updated, but the history could not be saved. Details are in the server log.') from None
     if entry['action'] in ('buy', 'wishlist'):
         try: refresh()
         except Exception as e: print('refresh after undo %s failed: %s' % (entry['action'], e), file=sys.stderr)
     return entry
+
+KEY_LOCKS, KEY_LOCKS_GUARD = {}, threading.Lock()
 
 def request_key(model, rid, shelf, lib, recs):
     own = 'S%s' % rid if 'S%s' % rid in shelf else None
@@ -273,8 +296,13 @@ def recommend(rid):
         masters = {str(raw.get('master_id')): {'year': m.get('year'), 'styles': m.get('styles', [])}} if m else {}
         recs = dict(recs, **{str(rid): engine.describe(engine.Rec(compact(raw), masters, 'inspected', None))})
     key = request_key(model, rid, shelf, lib, recs)
-    if key in SAVED:
-        return dict(SAVED[key], saved=True)
+    with KEY_LOCKS_GUARD: lock = KEY_LOCKS.setdefault(key, threading.Lock())
+    with lock:                                              # one paid call per record, however many requests arrive
+        if key in SAVED:
+            return dict(SAVED[key], saved=True)
+        return ask(key, model, rid, shelf, want, lib, recs)
+
+def ask(key, model, rid, shelf, want, lib, recs):
     x = harness.run_one(model, rid, shelf, want, lib, recs)
     if x['result']:
         names = {**{k: '%s — %s' % (r['artist'], r['title']) for k, r in shelf.items()},
@@ -326,6 +354,8 @@ class Handler(BaseHTTPRequestHandler):
             if method == 'POST' and p == '/api/refresh':
                 return self.send(200, refresh())
             self.send(404, {'error': 'not found'})
+        except HistoryError as e:
+            self.send(500, {'error': str(e)})
         except Exception as e:
             self.send(502, {'error': str(e)})
 
