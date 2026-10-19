@@ -13,8 +13,8 @@ Latest run `openai_gpt-5.6-luna-20261018-180255.json`, reviewed in `review3.json
 | Records with a specific style | 18 of 20 | 20 of 20 | ✅ |
 | Style accuracy | 90% | 16 of 18 (89%) | ❌ |
 | False close matches | at most 15% | 3 of 20 (15%) | ✅ |
-| Decision in under 60 s with the app | | not measured | — |
-| Same records take at least 90 s manually | | not measured | — |
+| Decision in under 60 s with the app | | passed in live use, 2026-10-19 (user; decisions.md) | ✅ |
+| Same records take at least 90 s manually | | dropped by the user, 2026-10-19 | — |
 | Photographed-crate test | | not done | — |
 
 - Style wrong: Chick Corea — Return To Forever (label ECM & European contemporary jazz, model Latin jazz); Juan Almeida — Fantasia (label Soul, funk & disco, model Salsa & Cuban)

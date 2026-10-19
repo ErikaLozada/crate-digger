@@ -11,9 +11,9 @@ import glob, json, os, re, statistics
 D = 'data/'
 OUT = 'docs/STATUS.md'
 PRIMARY = 'openai/gpt-5.6-luna'
-MANUAL = [('Decision in under 60 s with the app', 'not measured'),
-          ('Same records take at least 90 s manually', 'not measured'),
-          ('Photographed-crate test', 'not done')]
+MANUAL = [('Decision in under 60 s with the app', 'passed in live use, 2026-10-19 (user; decisions.md)', '✅'),
+          ('Same records take at least 90 s manually', 'dropped by the user, 2026-10-19', '—'),
+          ('Photographed-crate test', 'not done', '—')]
 
 def reason(p): return p.split('] — ', 1)[-1]
 
@@ -69,7 +69,7 @@ def main():
                 '| Style accuracy | 90%% | %d of %d (%.0f%%) | %s |' % (s['right'], s['scored'], 100 * s['right'] / s['scored'], mark(s['right'] >= 0.9 * s['scored'])),
                 ('| False close matches | at most 15%% | %d of %d (%.0f%%) | %s |' % (len(s['false']), s['n'], 100 * len(s['false']) / s['n'], mark(len(s['false']) <= 0.15 * s['n']))
                  if s['false'] is not None else '| False close matches | at most 15% | needs review | — |')]
-        out += ['| %s | | %s | — |' % m for m in MANUAL] if model == PRIMARY else []
+        out += ['| %s | | %s | %s |' % m for m in MANUAL] if model == PRIMARY else []
         out += ['', '- Style wrong: %s' % ('; '.join('%s (label %s, model %s)' % (name(r), labels[r['id']]['expected_style'], r['result']['style']) for r in s['wrong']) or 'none')]
         if s['false'] is not None: out += ['- False matches: %s' % ('; '.join(map(name, s['false'])) or 'none')]
         out += ['- Nothing close answered for %d of %d records with no close match known' % (s['nothing_close'], s['no_close']),
