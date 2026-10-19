@@ -106,8 +106,9 @@ button.row:active, a.row:active { background: var(--cell-press); }
 .pill.tint { background: var(--tint-soft); color: var(--tint); }
 .banner { font-size: 15px; background: color-mix(in srgb, var(--orange) 16%, transparent); color: var(--label); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; }
 .textbtn { background: none; border: 0; color: var(--tint); font: inherit; font-size: 17px; padding: 0 0 0 12px; cursor: pointer; }
-.decide { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 16px; }
-.dbtn { height: 50px; border: 0; border-radius: 12px; background: var(--fill); color: var(--label); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.decide { display: flex; gap: 8px; margin: 0 0 16px; }
+.decide > .dbtn { flex: 1 1 0; min-width: 0; }
+.dbtn { height: 50px; border: 0; border-radius: 12px; background: var(--fill); color: var(--label); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .dbtn:active { opacity: .6; }
 .dbtn:disabled { opacity: .4; }
 .dbtn.buy { background: var(--green); color: #fff; }
@@ -581,55 +582,68 @@ async function explore() {
 function decisions(id, r, current, {error = '', price = ''} = {}) {
   const el = $('#decide'), d = r.decision;
   const banner = error ? `<div class="banner">${esc(error)}</div>` : '';
-  if (d) {
-    el.innerHTML = `${banner}<div class="group"><div class="row"><div class="grow t">${esc(DONE[d.action])} ${esc(dayOf(d.date))}</div>
-      <button class="textbtn" id="undo">Undo</button></div></div>`;
-    $('#undo').onclick = () => act(id, r, current, 'Undoing…', `/api/decision/${d.id}`, {method: 'DELETE', headers: JSON_TYPE});
-    return;
-  }
   const send = (action, busy, extra = {}) => {
     const sticker = $('#sticker').value.trim() || null;
     return act(id, r, current, busy, `/api/decision/${id}`, {method: 'POST', headers: JSON_TYPE,
       body: JSON.stringify({action, price: sticker, ...extra})}, sticker || '');
   };
-  el.innerHTML = `${banner}
+  const choices = (withBanner = true) => `${withBanner ? banner : ''}
     <div class="group"><div class="field"><label for="sticker">Price</label>
       <input id="sticker" type="text" inputmode="decimal" placeholder="Sticker price, optional" value="${esc(price)}"></div></div>
     <div class="decide">
       ${r.own?.kind === 'same' ? '' : '<button class="dbtn buy" id="buy">Buy</button>'}
-      <button class="dbtn" id="pass">Pass</button>
-      <button class="dbtn explore" id="explore">Explore later</button>
+      ${d?.action === 'explore' || d?.action === 'pass' ? '' : '<button class="dbtn explore" id="explore">Explore later</button>'}
       ${r.wanted ? '' : '<button class="dbtn want" id="wishlist">Wishlist</button>'}
     </div>
-    <div id="exploreform"></div>`;
-  const buy = $('#buy'), wishlist = $('#wishlist');
-  if (buy) buy.onclick = () => send('buy', 'Adding to your collection…');
-  if (wishlist) wishlist.onclick = () => send('wishlist', 'Adding to your wantlist…');
-  $('#pass').onclick = () => send('pass', 'Saving…');
-  $('#explore').onclick = () => {
-    const form = $('#exploreform');
-    if (form.innerHTML) { form.innerHTML = ''; return; }
-    const tracks = r.tracks || [];
-    form.innerHTML = `<div class="group" style="--inset:58px; margin-top:12px">
-        <div class="field"><label for="note">Note</label><input id="note" type="text" placeholder="Why it is worth a listen"></div>
-        ${tracks.map((t, i) => `<label class="row"><input type="checkbox" id="tr-${i}"><span class="t wrap">${esc(t)}</span></label>`).join('')}
-      </div>
-      <button class="btn" id="save">Save</button>`;
-    $('#save').onclick = () => send('explore', 'Saving…', {
-      note: $('#note').value.trim(), tracks: tracks.filter((_, i) => $('#tr-' + i).checked)});
+    ${d?.action === 'explore' || d?.action === 'pass' ? '' : '<div id="exploreform"></div>'}`;
+  const wireChoices = () => {
+    const buy = $('#buy'), wishlist = $('#wishlist');
+    if (buy) buy.onclick = () => send('buy', 'Adding to your collection…');
+    if (wishlist) wishlist.onclick = () => send('wishlist', 'Adding to your wantlist…');
+    const explore = $('#explore');
+    if (!explore) return;
+    explore.onclick = () => {
+      const form = $('#exploreform');
+      if (form.innerHTML) { form.innerHTML = ''; return; }
+      const tracks = r.tracks || [];
+      form.innerHTML = `<div class="group" style="--inset:58px; margin-top:12px">
+          <div class="field"><label for="note">Note</label><input id="note" type="text" placeholder="Why it is worth a listen"></div>
+          ${tracks.map((t, i) => `<label class="row"><input type="checkbox" id="tr-${i}"><span class="t wrap">${esc(t)}</span></label>`).join('')}
+        </div>
+        <button class="btn" id="save">Save</button>`;
+      $('#save').onclick = () => send('explore', 'Saving…', {
+        note: $('#note').value.trim(), tracks: tracks.filter((_, i) => $('#tr-' + i).checked)});
+    };
   };
+  if (d) {
+    el.innerHTML = `${banner}<div class="group"><div class="row"><div class="grow t">${esc(DONE[d.action])} ${esc(dayOf(d.date))}</div>
+      <button class="textbtn" id="undo">Undo</button></div></div>`;
+    if (d.action === 'explore' || d.action === 'pass') {
+      el.innerHTML += choices(false);
+      wireChoices();
+    }
+    $('#undo').onclick = () => act(id, r, current, 'Undoing…', `/api/decision/${d.id}`, {method: 'DELETE', headers: JSON_TYPE});
+    return;
+  }
+  el.innerHTML = choices();
+  wireChoices();
 }
 
 // A late answer may only change the card that sent it.
 async function act(id, r, current, busy, path, opts, price = '') {
   $('#decide').innerHTML = `<div class="group"><div class="row">${I.spinner}<div class="grow s">${esc(busy)}</div></div></div>`;
   let result;
-  try { result = await api(path, opts); }
-  catch (e) { if (current()) decisions(id, r, current, {error: e.message, price}); return; }
-  if (current()) {
-    r.decision = opts.method === 'DELETE' ? null : result.decision;
-    decisions(id, r, current);
+  try {
+    result = await api(path, opts);
+    if (!current()) return;
+    if (opts.method === 'DELETE') {
+      const latest = await api(`/api/release/${id}`);
+      if (!current()) return;
+      r.decision = latest.decision;
+    } else r.decision = result.decision;
   }
+  catch (e) { if (current()) decisions(id, r, current, {error: e.message, price}); return; }
+  if (current()) decisions(id, r, current);
 }
 
 // ---------------------------------------------------------------- routing
