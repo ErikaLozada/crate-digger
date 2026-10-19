@@ -20,9 +20,10 @@ async function open(data) {
 }
 const box = b => b.elements.get('decide').innerHTML;
 
-test('the four buttons show for a release that is not on the shelf or wanted', async () => {
+test('Buy, Explore later and Wishlist show for a release that is not on the shelf or wanted', async () => {
   const b = await open(record('A'));
-  for (const id of ['buy', 'pass', 'explore', 'wishlist']) assert.match(box(b), new RegExp(`id="${id}"`));
+  for (const id of ['buy', 'explore', 'wishlist']) assert.match(box(b), new RegExp(`id="${id}"`));
+  assert.doesNotMatch(box(b), /Pass/);
   assert.match(box(b), /Explore later/);
 });
 
@@ -40,13 +41,32 @@ test('Buy is hidden only for the exact release on the shelf; Wishlist is hidden 
   }
 });
 
-test('a saved decision replaces the buttons with its date and an Undo', async () => {
-  const lines = {buy: 'Bought on 12 Oct', pass: 'Passed on 12 Oct', explore: 'Saved to explore on 12 Oct', wishlist: 'Wishlisted on 12 Oct'};
-  for (const [action, line] of Object.entries(lines)) {
+test('explore keeps Buy and Wishlist under the saved line and Undo', async () => {
+  const b = await open(decided('explore'));
+  assert.match(plain(box(b)), /Saved to explore on 12 Oct Undo/);
+  for (const id of ['sticker', 'buy', 'wishlist']) assert.match(box(b), new RegExp(`id="${id}"`));
+  assert.doesNotMatch(box(b), /id="(pass|explore)"/);
+});
+
+test('explore keeps the existing Buy and Wishlist hiding rules', async () => {
+  const b = await open({...decided('explore'), own: {kind: 'same'}, wanted: true});
+  assert.match(box(b), /id="sticker"/);
+  assert.doesNotMatch(box(b), /id="(buy|wishlist)"/);
+});
+
+test('buy and wishlist decisions show only their saved line and Undo', async () => {
+  for (const [action, line] of [['buy', 'Bought on 12 Oct'], ['wishlist', 'Wishlisted on 12 Oct']]) {
     const b = await open(decided(action));
     assert.equal(plain(box(b)), `${line} Undo`);
     assert.doesNotMatch(box(b), /id="(buy|pass|explore|wishlist|sticker)"/);
   }
+});
+
+test('an old pass decision shows its saved line, Undo, Buy and Wishlist', async () => {
+  const b = await open(decided('pass'));
+  assert.match(plain(box(b)), /Passed on 12 Oct Undo/);
+  for (const id of ['sticker', 'buy', 'wishlist']) assert.match(box(b), new RegExp(`id="${id}"`));
+  assert.doesNotMatch(box(b), /id="(pass|explore)"/);
 });
 
 test('Buy posts the sticker price as JSON and updates only the decision section', async () => {
@@ -68,8 +88,8 @@ test('Buy posts the sticker price as JSON and updates only the decision section'
   assert.match(plain(box(b)), /^Bought on 12 Oct Undo$/);
 });
 
-test('Pass and Wishlist send a null price when the sticker field is empty', async () => {
-  for (const action of ['pass', 'wishlist']) {
+test('Wishlist sends a null price when the sticker field is empty', async () => {
+  for (const action of ['wishlist']) {
     const b = await open(record('A'));
     const click = b.elements.get(action).onclick();
     assert.deepEqual(JSON.parse(b.sent('/api/decision/A').body), {action, price: null});
@@ -91,7 +111,9 @@ test('Explore later sends the note and only the ticked tracks, and escapes track
   b.respond('/api/decision/A', {decision: {...ENTRY, action: 'explore'}}); await click;
   await flush();
   assert.equal(b.pending('/api/release/A'), 0);
-  assert.match(plain(box(b)), /Saved to explore on 12 Oct/);
+  assert.match(plain(box(b)), /Saved to explore on 12 Oct Undo/);
+  for (const id of ['buy', 'wishlist', 'sticker']) assert.match(box(b), new RegExp(`id="${id}"`));
+  assert.doesNotMatch(box(b), /id="(pass|explore)"/);
 });
 
 test('Explore later opens and closes its form with a second tap', async () => {
@@ -102,7 +124,7 @@ test('Explore later opens and closes its form with a second tap', async () => {
   assert.equal(b.elements.get('exploreform').innerHTML, '');
 });
 
-test('Undo deletes the entry as JSON and restores the decision buttons in place', async () => {
+test('Undo of a wishlist after explore restores the earlier explore decision in place', async () => {
   const b = await open(decided('wishlist', {id: 'e9'}));
   await loadCardExtras(b);
   const rest = ['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML);
@@ -110,11 +132,17 @@ test('Undo deletes the entry as JSON and restores the decision buttons in place'
   const sent = b.sent('/api/decision/e9');
   assert.equal(sent.method, 'DELETE');
   assert.equal(sent.headers['Content-Type'], 'application/json');
-  b.respond('/api/decision/e9', {decision: {...ENTRY, undone: '2026-10-19'}}); await click;
+  b.respond('/api/decision/e9', {decision: {...ENTRY, undone: '2026-10-19'}});
+  await flush();
+  assert.equal(b.pending('/api/release/A'), 1);
+  b.respond('/api/release/A', {decision: {...ENTRY, id: 'e8', action: 'explore'}});
+  await click;
   await flush();
   assert.equal(b.pending('/api/release/A'), 0);
   assert.deepEqual(['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML), rest);
-  for (const id of ['buy', 'pass', 'explore', 'wishlist']) assert.match(box(b), new RegExp(`id="${id}"`));
+  assert.match(plain(box(b)), /Saved to explore on 12 Oct Undo/);
+  for (const id of ['buy', 'wishlist', 'sticker']) assert.match(box(b), new RegExp(`id="${id}"`));
+  assert.doesNotMatch(box(b), /id="(pass|explore)"/);
 });
 
 test('a Discogs error keeps the choice, shows the server message escaped, and keeps the price', async () => {
@@ -155,7 +183,7 @@ test('a late decision answer cannot change a different card, success or failure'
 
 test('a late decision answer cannot change the same card after returning to it', async () => {
   const b = await open(record('A'));
-  const click = b.elements.get('pass').onclick();
+  const click = b.elements.get('buy').onclick();
   b.navigate('#/');
   b.navigate('#/release/A');
   assert.equal(b.pending('/api/release/A'), 1);
