@@ -620,12 +620,16 @@ function decisions(id, r, current, {error = '', price = ''} = {}) {
   };
 }
 
-// A write reloads the card on success. A late answer may only change the card that sent it.
+// A late answer may only change the card that sent it.
 async function act(id, r, current, busy, path, opts, price = '') {
   $('#decide').innerHTML = `<div class="group"><div class="row">${I.spinner}<div class="grow s">${esc(busy)}</div></div></div>`;
-  try { await api(path, opts); }
+  let result;
+  try { result = await api(path, opts); }
   catch (e) { if (current()) decisions(id, r, current, {error: e.message, price}); return; }
-  if (current()) card(id);
+  if (current()) {
+    r.decision = opts.method === 'DELETE' ? null : result.decision;
+    decisions(id, r, current);
+  }
 }
 
 // ---------------------------------------------------------------- routing

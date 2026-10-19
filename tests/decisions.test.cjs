@@ -1,12 +1,17 @@
 // Run with node --test tests/decisions.test.cjs. The decision buttons on the record card, against a mocked API.
 const assert = require('node:assert/strict');
 const {test} = require('node:test');
-const {browser, record, flush} = require('./page-harness.cjs');
+const {browser, record, picks, samples, flush} = require('./page-harness.cjs');
 
 const plain = html => html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 const ENTRY = {id: 'e1', release_id: 'A', action: 'pass', date: '2026-10-12T14:02:11+11:00', artist: 'Artist', title: 'Record A',
   price: null, tracks: [], note: '', discogs: null, undone: null};
 const decided = (action, extra = {}) => ({...record('A'), decision: {...ENTRY, action, ...extra}});
+async function loadCardExtras(b) {
+  b.respond('/api/recommend/A', picks('Jazz'));
+  b.respond('/api/samples/A', samples('A'));
+  await flush();
+}
 
 async function open(data) {
   const b = browser(), card = b.navigate('#/release/A');
@@ -44,9 +49,11 @@ test('a saved decision replaces the buttons with its date and an Undo', async ()
   }
 });
 
-test('Buy posts the sticker price as JSON, shows pending, then reloads the card', async () => {
+test('Buy posts the sticker price as JSON and updates only the decision section', async () => {
   const b = await open(record('A'));
+  await loadCardExtras(b);
   b.elements.get('sticker').value = ' 25 ';
+  const rest = ['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML);
   const click = b.elements.get('buy').onclick();
   const sent = b.sent('/api/decision/A');
   assert.equal(sent.method, 'POST');
@@ -54,8 +61,10 @@ test('Buy posts the sticker price as JSON, shows pending, then reloads the card'
   assert.deepEqual(JSON.parse(sent.body), {action: 'buy', price: '25'});
   assert.match(plain(box(b)), /Adding to your collection/);
   assert.doesNotMatch(box(b), /id="buy"/);
-  b.respond('/api/decision/A', {decision: ENTRY}); await click;
-  b.respond('/api/release/A', decided('buy')); await flush();
+  b.respond('/api/decision/A', {decision: {...ENTRY, action: 'buy'}}); await click;
+  await flush();
+  assert.equal(b.pending('/api/release/A'), 0);
+  assert.deepEqual(['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML), rest);
   assert.match(plain(box(b)), /^Bought on 12 Oct Undo$/);
 });
 
@@ -79,8 +88,9 @@ test('Explore later sends the note and only the ticked tracks, and escapes track
   const click = b.elements.get('save').onclick();
   assert.deepEqual(JSON.parse(b.sent('/api/decision/A').body),
     {action: 'explore', price: '30', note: 'Check the bass', tracks: ['<Side B>']});
-  b.respond('/api/decision/A', {decision: ENTRY}); await click;
-  b.respond('/api/release/A', decided('explore')); await flush();
+  b.respond('/api/decision/A', {decision: {...ENTRY, action: 'explore'}}); await click;
+  await flush();
+  assert.equal(b.pending('/api/release/A'), 0);
   assert.match(plain(box(b)), /Saved to explore on 12 Oct/);
 });
 
@@ -92,16 +102,19 @@ test('Explore later opens and closes its form with a second tap', async () => {
   assert.equal(b.elements.get('exploreform').innerHTML, '');
 });
 
-test('Undo deletes the entry as JSON and reloads the card', async () => {
+test('Undo deletes the entry as JSON and restores the decision buttons in place', async () => {
   const b = await open(decided('wishlist', {id: 'e9'}));
+  await loadCardExtras(b);
+  const rest = ['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML);
   const click = b.elements.get('undo').onclick();
   const sent = b.sent('/api/decision/e9');
   assert.equal(sent.method, 'DELETE');
   assert.equal(sent.headers['Content-Type'], 'application/json');
   b.respond('/api/decision/e9', {decision: {...ENTRY, undone: '2026-10-19'}}); await click;
-  b.respond('/api/release/A', record('A')); await flush();
-  assert.match(box(b), /id="buy"/);
-  assert.match(box(b), /id="wishlist"/);
+  await flush();
+  assert.equal(b.pending('/api/release/A'), 0);
+  assert.deepEqual(['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML), rest);
+  for (const id of ['buy', 'pass', 'explore', 'wishlist']) assert.match(box(b), new RegExp(`id="${id}"`));
 });
 
 test('a Discogs error keeps the choice, shows the server message escaped, and keeps the price', async () => {
