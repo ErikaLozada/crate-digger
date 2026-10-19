@@ -482,7 +482,10 @@ async function card(id) {
       <div><b>${m.have ?? '–'}</b><small>Own it</small></div>
       <div><b>${m.want ?? '–'}</b><small>Want it</small></div>
       <div><b>${m.for_sale ?? '–'}</b><small>For sale</small></div>
-    </div>`;
+    </div>
+    ${m.for_sale > 0 ? `<a class="row" href="${esc(`https://www.discogs.com/sell/release/${encodeURIComponent(r.id)}?ships_from=Australia`)}" target="_blank" rel="noopener">
+      <div class="grow"><div class="t">Sellers in Australia</div></div>${I.chev}
+    </a>` : ''}`;
   decisions(id, r, current);
 
   loadPicks(id, r, current);
