@@ -639,11 +639,19 @@ async function act(id, r, current, busy, path, opts, price = '') {
   try {
     result = await api(path, opts);
     if (!current()) return;
-    if (opts.method === 'DELETE') {
-      const latest = await api(`/api/release/${id}`);
+    const action = opts.method === 'POST' ? JSON.parse(opts.body).action : '';
+    if (opts.method === 'POST') r.decision = result.decision;
+    if (opts.method === 'DELETE' || ['buy', 'wishlist'].includes(action)) {
+      // The write already succeeded: if this re-read fails, keep the saved line rather than offer the button again.
+      const latest = await api(`/api/release/${id}`).catch(() => null);
       if (!current()) return;
-      r.decision = latest.decision;
-    } else r.decision = result.decision;
+      if (latest) {
+        r.decision = latest.decision;
+        r.wanted = latest.wanted;
+        r.own = latest.own;
+        $('#own').innerHTML = ownership(r.own);
+      } else if (opts.method === 'DELETE') r.decision = null;
+    }
   }
   catch (e) { if (current()) decisions(id, r, current, {error: e.message, price}); return; }
   if (current()) decisions(id, r, current);

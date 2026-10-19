@@ -69,7 +69,7 @@ test('an old pass decision shows its saved line, Undo, Buy and Wishlist', async 
   assert.doesNotMatch(box(b), /id="(pass|explore)"/);
 });
 
-test('Buy posts the sticker price as JSON and updates only the decision section', async () => {
+test('Buy posts the sticker price, refreshes ownership, and leaves other card sections alone', async () => {
   const b = await open(record('A'));
   await loadCardExtras(b);
   b.elements.get('sticker').value = ' 25 ';
@@ -81,20 +81,38 @@ test('Buy posts the sticker price as JSON and updates only the decision section'
   assert.deepEqual(JSON.parse(sent.body), {action: 'buy', price: '25'});
   assert.match(plain(box(b)), /Adding to your collection/);
   assert.doesNotMatch(box(b), /id="buy"/);
-  b.respond('/api/decision/A', {decision: {...ENTRY, action: 'buy'}}); await click;
+  b.respond('/api/decision/A', {decision: {...ENTRY, action: 'buy'}});
+  await flush();
+  assert.equal(b.pending('/api/release/A'), 1);
+  b.respond('/api/release/A', {decision: {...ENTRY, action: 'buy'}, wanted: false, own: {kind: 'same', format: 'LP'}});
+  await click;
   await flush();
   assert.equal(b.pending('/api/release/A'), 0);
   assert.deepEqual(['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML), rest);
+  assert.match(plain(b.elements.get('own').innerHTML), /You own this/);
   assert.match(plain(box(b)), /^Bought on 12 Oct Undo$/);
 });
 
-test('Wishlist sends a null price when the sticker field is empty', async () => {
-  for (const action of ['wishlist']) {
-    const b = await open(record('A'));
-    const click = b.elements.get(action).onclick();
-    assert.deepEqual(JSON.parse(b.sent('/api/decision/A').body), {action, price: null});
-    b.respond('/api/decision/A', {decision: ENTRY}); await click;
-  }
+test('Wishlist refreshes wanted state after the POST', async () => {
+  const b = await open(record('A'));
+  const click = b.elements.get('wishlist').onclick();
+  assert.deepEqual(JSON.parse(b.sent('/api/decision/A').body), {action: 'wishlist', price: null});
+  b.respond('/api/decision/A', {decision: {...ENTRY, action: 'wishlist'}});
+  await flush();
+  b.respond('/api/release/A', {decision: {...ENTRY, action: 'wishlist'}, wanted: true, own: null});
+  await click;
+  assert.doesNotMatch(box(b), /id="wishlist"/);
+});
+
+test('a failed re-read after a successful Buy keeps the saved line and offers no second Buy', async () => {
+  const b = await open(record('A'));
+  const click = b.elements.get('buy').onclick();
+  b.respond('/api/decision/A', {decision: {...ENTRY, action: 'buy'}});
+  await flush();
+  b.refuse('/api/release/A', 'Discogs is down');
+  await click;
+  assert.match(box(b), /Bought on/);
+  assert.doesNotMatch(box(b), /id="buy"/);
 });
 
 test('Explore later sends the note and only the ticked tracks, and escapes track names', async () => {
@@ -143,6 +161,30 @@ test('Undo of a wishlist after explore restores the earlier explore decision in 
   assert.match(plain(box(b)), /Saved to explore on 12 Oct Undo/);
   for (const id of ['buy', 'wishlist', 'sticker']) assert.match(box(b), new RegExp(`id="${id}"`));
   assert.doesNotMatch(box(b), /id="(pass|explore)"/);
+});
+
+test('Undo of a reopened wishlist refreshes wanted state and shows Wishlist again', async () => {
+  const b = await open({...decided('wishlist', {id: 'e10'}), wanted: true});
+  const click = b.elements.get('undo').onclick();
+  b.respond('/api/decision/e10', {decision: {...ENTRY, undone: '2026-10-19'}});
+  await flush();
+  b.respond('/api/release/A', {decision: null, wanted: false, own: null});
+  await click;
+  assert.match(box(b), /id="wishlist"/);
+});
+
+test('Undo of a buy refreshes ownership and shows Buy again without changing other card sections', async () => {
+  const b = await open({...decided('buy', {id: 'e11'}), own: {kind: 'same'}, wanted: false});
+  await loadCardExtras(b);
+  const rest = ['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML);
+  const click = b.elements.get('undo').onclick();
+  b.respond('/api/decision/e11', {decision: {...ENTRY, undone: '2026-10-19'}});
+  await flush();
+  b.respond('/api/release/A', {decision: null, wanted: false, own: null});
+  await click;
+  assert.match(box(b), /id="buy"/);
+  assert.match(plain(b.elements.get('own').innerHTML), /Not on your shelf or in your library/);
+  assert.deepEqual(['hero', 'picks', 'listen', 'links'].map(id => b.elements.get(id).innerHTML), rest);
 });
 
 test('a Discogs error keeps the choice, shows the server message escaped, and keeps the price', async () => {
