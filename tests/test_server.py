@@ -1,8 +1,7 @@
-import csv, http.client, io, json, os, sys, tempfile, threading, time, unittest, urllib.error
+import csv, io, json, os, plistlib, sys, tempfile, threading, time, unittest, urllib.error
 from unittest import mock
 
 import build_compact, engine, harness, server
-from http.server import ThreadingHTTPServer
 
 
 def raw_release(i, master=None):
@@ -32,14 +31,16 @@ class RefreshTests(InTempData):
         with open('data/collection.csv', 'w', newline='') as f:
             w = csv.writer(f); w.writerow(['Catalog#', 'Artist', 'Title', 'release_id']); w.writerows([['a', 'b', 'c', '1'], ['a', 'b', 'c', '2']])
         with open('data/wantlist.csv', 'w', newline='') as f:
-            csv.writer(f).writerows([['h'] * 8, ['', '', '', '', '', '', '', '3'], ['', '', '', '', '', '', '', '1']])
+            csv.writer(f).writerows([['Title', 'release_id'], ['Three', '3'], ['One', '1']])
         self.write('data/releases/1.json', raw_release(1))
         self.calls = []
         def get(url, discogs=False, timeout=10):
             self.calls.append(url)
             if '/releases/3' in url: raise urllib.error.HTTPError(url, 404, 'Not Found', {}, io.BytesIO())
             return {'id': 20, 'title': 'Master'} if '/masters/' in url else raw_release(2, master=20)
-        patches = [mock.patch.object(server, 'get', get), mock.patch.object(server.time, 'sleep')]
+        patches = [mock.patch.object(server, 'get', get), mock.patch.object(server.time, 'sleep'),
+                   mock.patch.object(server.discogs_sync, 'sync', return_value={'collection': 2, 'wantlist': 2, 'synced_at': '2026-10-28T12:00:00+11:00'}),
+                   mock.patch.object(server.discogs_sync, 'status', return_value=None), mock.patch.object(server, 'WANT_IDS', {1, 3}, create=True)]
         for p in patches: p.start(); self.addCleanup(p.stop)
 
     def test_fetches_only_records_without_details(self):
@@ -104,6 +105,160 @@ class BuildCompactTests(InTempData):
         self.assertEqual((len(rel['videos']), rel['nvideos']), (3, 5))
         self.assertEqual(rel['series'], [[7, 'Series']])
         self.assertEqual(out['masters']['10']['artists'], [[1, 'Artist']])
+
+
+class AccountSyncTests(InTempData):
+    def setUp(self):
+        super().setUp()
+        self.csv('data/collection.csv', [['Title', 'Artist', 'Format', 'Released', 'release_id', 'master_id', 'Genres', 'Styles'],
+                                         ['Three', 'Artist', 'Vinyl, LP', '1970', '3', '99', '["Jazz"]', '["Bop"]']])
+        self.csv('data/wantlist.csv', [['Title', 'release_id'], ['One', '1']])
+        with open('data/Library.xml', 'wb') as f: plistlib.dump({'Tracks': {}, 'Playlists': []}, f)
+        for name, value in [('D', {}), ('SHELF', []), ('SHELF_IDS', set()), ('WANT_IDS', set()), ('LIB', []), ('H', ())]:
+            p = mock.patch.object(server, name, value, create=True); p.start(); self.addCleanup(p.stop)
+        self.sync = self.patch(server.discogs_sync, 'sync')
+        self.sync.return_value = {'collection': 1, 'wantlist': 1, 'synced_at': '2026-10-28T12:00:00+11:00'}
+        self.status = self.patch(server.discogs_sync, 'status', return_value=None)
+        self.patch(server, 'get', side_effect=urllib.error.URLError('offline'))
+        self.patch(server.time, 'sleep')
+
+    def patch(self, obj, name, **kwargs):
+        p = mock.patch.object(obj, name, **kwargs)
+        value = p.start(); self.addCleanup(p.stop)
+        return value
+
+    def csv(self, path, rows):
+        with open(path, 'w', newline='') as f: csv.writer(f).writerows(rows)
+
+    def test_sync_finishes_before_details_and_snapshot_reload(self):
+        calls = []
+        self.sync.side_effect = lambda: (calls.append('sync') or self.sync.return_value)
+        with mock.patch.object(server, 'fetch_new', side_effect=lambda: (calls.append('details') or ([], []))), \
+                mock.patch.object(server, 'newer_than_compact', return_value=False), \
+                mock.patch.object(server, 'load', side_effect=lambda: calls.append('load')):
+            out = server.refresh()
+        self.assertEqual(calls, ['sync', 'details', 'load'])
+        self.assertEqual(out['sync'], self.sync.return_value)
+        self.assertIsNone(out['sync_error'])
+
+    def test_failed_detail_download_keeps_synced_ownership(self):
+        out = server.refresh()
+        self.assertEqual((out['shelf'], out['wantlist']), (1, 1))
+        self.assertEqual(server.SHELF_IDS, {3})
+        self.assertEqual(server.H[0]['S3']['title'], 'Three')
+        self.assertEqual(server.SHELF[0].master, 99)
+        self.assertTrue(out['failed'])
+        offline = server.release(3)                         # real fetch_release path: no raw file and network unavailable
+        self.assertFalse(offline['live'])
+        self.assertEqual((offline['title'], offline['own']['kind']), ('Three', 'same'))
+        self.assertIsNone(offline['market']['low'])
+        with mock.patch.object(server, 'fetch_release', return_value=(raw_release(3), {}, True)):
+            self.assertEqual(server.release(3)['own']['kind'], 'same')
+        with mock.patch.object(server, 'fetch_release', return_value=(raw_release(8, 99), {}, True)):
+            self.assertEqual(server.release(8)['own']['kind'], 'other_edition')
+        self.assertFalse(os.path.exists('data/releases/3.json'))   # details will be retried
+
+    def test_missing_or_invalid_raw_details_still_show_synced_owned_record(self):
+        server.load()
+        for saved in [{'missing': True}, {'id': 3}]:
+            self.write('data/releases/3.json', saved)
+            out = server.release(3)
+            self.assertEqual((out['title'], out['own']['kind'], out['live']), ('Three', 'same', False))
+
+    def test_empty_lists_remove_all_live_candidates_without_fixed_snapshot(self):
+        server.load()
+        self.assertEqual(set(server.H[0]), {'S3'})
+        self.csv('data/collection.csv', [['release_id']])
+        self.csv('data/wantlist.csv', [['release_id']])
+        server.load()
+        self.assertEqual((server.SHELF_IDS, server.WANT_IDS, server.H[0], server.H[1]), (set(), set(), {}, {}))
+        self.assertFalse(os.path.exists('data/results.json'))
+
+    def test_sync_failure_reports_last_success_and_uses_cache_without_more_network(self):
+        self.sync.side_effect = server.discogs_write.DiscogsError('Discogs rejected the token')
+        self.status.return_value = {'collection': 1, 'wantlist': 1, 'synced_at': '2026-10-27T12:00:00+11:00'}
+        with mock.patch.object(server, 'fetch_new') as fetch:
+            out = server.refresh()
+        fetch.assert_not_called()
+        self.assertEqual(out['sync_error'], 'Discogs rejected the token')
+        self.assertEqual(out['sync'], self.status.return_value)
+        self.assertEqual((out['shelf'], out['wantlist']), (1, 1))
+
+    def test_unexpected_sync_error_does_not_expose_internal_details(self):
+        self.sync.side_effect = RuntimeError('secret-sensitive-internal-details')
+        self.assertNotIn('secret-sensitive', json.dumps(server.refresh()))
+
+    def test_post_action_reload_skips_account_sync(self):
+        server.refresh(sync=False)
+        self.sync.assert_not_called()
+
+    def test_refresh_holds_same_lock_as_account_writes(self):
+        entered, release, attempted, done = (threading.Event() for _ in range(4))
+        order = []
+        def sync():
+            order.append('sync'); entered.set(); release.wait(2)
+            return self.sync.return_value
+        def writer():
+            attempted.set()
+            with server.discogs_write.DATA_LOCK: order.append('write'); done.set()
+        self.sync.side_effect = sync
+        with mock.patch.object(server, 'fetch_new', return_value=([], [])), mock.patch.object(server, 'newer_than_compact', return_value=False):
+            refresh = threading.Thread(target=server.refresh); refresh.start()
+            self.assertTrue(entered.wait(1))
+            write = threading.Thread(target=writer); write.start()
+            self.assertTrue(attempted.wait(1))
+            self.assertFalse(done.wait(.02))
+            release.set(); refresh.join(2); write.join(2)
+        self.assertEqual(order, ['sync', 'write'])
+        self.assertFalse(refresh.is_alive() or write.is_alive())
+
+    def test_startup_uses_cache_immediately_and_schedules_sync(self):
+        with mock.patch.object(server.threading, 'Thread') as thread:
+            server.startup()
+            thread.assert_called_once()
+            self.assertTrue(thread.call_args.kwargs['daemon'])
+            thread.return_value.start.assert_called_once_with()
+            self.sync.assert_not_called()
+            self.assertEqual(server.SHELF_IDS, {3})
+            thread.call_args.kwargs['target']()
+            self.sync.assert_called_once_with()
+
+    def test_background_startup_failure_keeps_loaded_cache(self):
+        with mock.patch.object(server.threading, 'Thread') as thread, mock.patch.object(sys, 'stderr', io.StringIO()) as err:
+            server.startup()
+            with mock.patch.object(server, 'refresh', side_effect=OSError('private path')):
+                thread.call_args.kwargs['target']()
+            self.assertEqual(server.SHELF_IDS, {3})
+            self.assertIn('using cached lists', err.getvalue())
+            self.assertNotIn('private path', err.getvalue())
+
+    def test_startup_without_account_cache_syncs_before_serving(self):
+        os.unlink('data/collection.csv')
+        def synced():
+            self.csv('data/collection.csv', [['release_id']])
+            return self.sync.return_value
+        self.sync.side_effect = synced
+        with mock.patch.object(server.threading, 'Thread') as thread:
+            out = server.startup()
+        self.sync.assert_called_once_with()
+        thread.assert_not_called()
+        self.assertIsNone(out['sync_error'])
+
+    def test_offline_first_start_fails_instead_of_fabricating_empty_account(self):
+        os.unlink('data/collection.csv')
+        self.sync.side_effect = server.discogs_write.DiscogsError('Could not reach Discogs')
+        with self.assertRaises(FileNotFoundError): server.startup()
+
+    def test_card_uses_one_snapshot_even_when_refresh_publishes_mid_request(self):
+        server.load()
+        def fetched(rid):
+            with server.SNAPSHOT_LOCK:
+                server.SHELF, server.SHELF_IDS, server.WANT_IDS, server.LIB = [], set(), {3}, []
+            return raw_release(rid), {}, True
+        with mock.patch.object(server, 'fetch_release', side_effect=fetched):
+            out = server.release(3)
+        self.assertEqual(out['own']['kind'], 'same')
+        self.assertFalse(out['wanted'])
 
 
 class BindTests(unittest.TestCase):
@@ -271,16 +426,19 @@ class DecisionTests(InTempData):
                    mock.patch.object(server.discogs_write, 'unwant')]
         self.mocks = [p.start() for p in patches]
         for p in patches: self.addCleanup(p.stop)
-        self.http = ThreadingHTTPServer(('127.0.0.1', 0), server.Handler)
-        self.thread = threading.Thread(target=self.http.serve_forever, daemon=True); self.thread.start()
-        self.addCleanup(self.http.server_close); self.addCleanup(self.http.shutdown)
 
     def request(self, method, path, body=None, ctype='application/json'):
-        conn = http.client.HTTPConnection('127.0.0.1', self.http.server_port)
-        payload = json.dumps(body) if body is not None else None
-        conn.request(method, path, payload, {'Content-Type': ctype})
-        res = conn.getresponse(); code = res.status; data = json.load(res); conn.close()
-        return code, data
+        # Exercise routes with in-memory streams: no server/socket on the development Mac.
+        handler = object.__new__(server.Handler)
+        payload = json.dumps(body).encode() if body is not None else b''
+        handler.path = path
+        handler.headers = {'Content-Type': ctype, 'Content-Length': str(len(payload))}
+        handler.rfile = io.BytesIO(payload)
+        result = []
+        handler.send = lambda code, data, ctype='application/json': result.append((code, data))
+        handler.route(method)
+        self.assertEqual(len(result), 1)
+        return result[0]
 
     def test_each_action_saves_fields_and_external_calls(self):
         for action in ('pass', 'explore', 'buy', 'wishlist'):
@@ -296,6 +454,7 @@ class DecisionTests(InTempData):
         self.mocks[8].assert_called_once_with(1)
         self.mocks[9].assert_called_once_with(1)
         self.assertEqual(self.mocks[6].call_count, 2)
+        self.assertEqual(self.mocks[6].call_args_list, [mock.call(sync=False), mock.call(sync=False)])
         self.assertEqual(server.decisions(), json.loads(self.read(self.path)))
 
     def test_discogs_failure_saves_nothing(self):
@@ -316,6 +475,7 @@ class DecisionTests(InTempData):
             self.assertEqual(self.request('DELETE', '/api/decision/' + entry_id)[0], 404)
         self.mocks[10].assert_called_once_with(1, 1, 42)
         self.mocks[11].assert_called_once_with(1)
+        self.assertTrue(all(c == mock.call(sync=False) for c in self.mocks[6].call_args_list))
         self.assertEqual(len(server.decisions()), 3)
         self.assertTrue(all(e['undone'] for e in server.decisions()))
         self.assertEqual(self.request('DELETE', '/api/decision/' + '0' * 32)[0], 404)

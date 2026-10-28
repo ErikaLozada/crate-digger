@@ -179,7 +179,7 @@ button.row:active, a.row:active { background: var(--cell-press); }
   <div class="bar-in">
     <div><button class="bar-btn hidden" id="back"><svg class="i" viewBox="0 0 24 24"><path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Search</button></div>
     <div class="bar-title" id="bartitle">Crate Digger</div>
-    <div class="bar-right"><button class="bar-btn" id="refresh" aria-label="Re-import collection and library"><svg class="i" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+    <div class="bar-right"><button class="bar-btn" id="refresh" aria-label="Sync Discogs and reload Apple library import"><svg class="i" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
   </div>
 </nav>
 <main class="page" id="app"></main>
@@ -670,13 +670,15 @@ function route() {
 window.addEventListener('hashchange', route);
 $('#refresh').onclick = async e => {
   const b = e.currentTarget; b.disabled = true; b.style.opacity = .4;
-  home('Refreshing… new records take a couple of seconds each to download.');
+  home('Syncing your Discogs collection and wantlist… new record details take a couple of seconds each to download.');
   const current = viewGuard();
   try {
     const d = await api('/api/refresh', {method: 'POST'});
-    if (current()) home(`Refreshed: ${d.shelf} shelf records, ${d.library} library albums` +
-      (d.added ? `; ${d.added} new record${d.added > 1 ? 's' : ''} downloaded` : '') +
-      (d.failed.length ? `. Could not download ${d.failed.join(', ')}; Refresh again to retry.` : '.'));
+    if (current()) home((d.sync_error ? `Discogs sync failed: ${d.sync_error} Using cached lists: ` : 'Synced Discogs: ') +
+      `${d.shelf} shelf records, ${d.wantlist} wanted. Apple library: ${d.library} albums (local import). ` +
+      (d.sync?.synced_at ? `Last successful Discogs sync: ${d.sync.synced_at.replace('T', ' ')}. ` : 'No successful Discogs sync recorded. ') +
+      (d.added ? `${d.added} new record${d.added > 1 ? 's' : ''} downloaded. ` : '') +
+      (d.failed.length ? `Could not download details for ${d.failed.join(', ')}; Refresh again to retry.` : ''));
   }
   catch (err) { if (current()) home(`Refresh failed: ${err.message}`); }
   b.disabled = false; b.style.opacity = '';

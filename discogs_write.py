@@ -1,7 +1,7 @@
 """Changes to the user's Discogs account: Buy adds to the collection, Wishlist to the wantlist, and both can be undone.
 After a successful call the local export (data/collection.csv, data/wantlist.csv) is updated to match.
 CD_DISCOGS_DRY=1: no network and no file changes; calls return made-up ids. Workers and tests must use it."""
-import csv, json, os, random, sys, time, urllib.error, urllib.request
+import csv, json, os, random, sys, threading, time, urllib.error, urllib.request
 
 DRY = os.environ.get('CD_DISCOGS_DRY') == '1'
 UA = 'CrateDiggerPrototype/0.1 (personal collection)'
@@ -9,9 +9,13 @@ API = 'https://api.discogs.com'
 COLLECTION_CSV = 'data/collection.csv'
 WANTLIST_CSV = 'data/wantlist.csv'
 _username = None
+DATA_LOCK = threading.RLock()
 
 class DiscogsError(Exception):
     """A Discogs call failed; the message is safe to show on the card."""
+    def __init__(self, message, status=None, retry_after=None):
+        super().__init__(message)
+        self.status, self.retry_after = status, retry_after
 
 def _token():
     return open('discogs_token.txt').read().strip() if os.path.exists('discogs_token.txt') else os.environ.get('DISCOGS_TOKEN', '')
@@ -28,7 +32,7 @@ def _call(method, path, body=None):
     except urllib.error.HTTPError as e:
         msg = {401: 'Discogs rejected the token', 403: 'Discogs refused this change', 404: 'Discogs does not have that record',
                429: 'Discogs rate limit, try again in a minute'}.get(e.code, 'Discogs error %s' % e.code)
-        raise DiscogsError(msg) from None
+        raise DiscogsError(msg, e.code, e.headers.get('Retry-After') if e.headers else None) from None
     except (urllib.error.URLError, OSError, TimeoutError):
         raise DiscogsError('Could not reach Discogs') from None
     try: return json.loads(raw) if raw else {}
@@ -59,7 +63,9 @@ def _row(r, header, extra):
     vals = {'Catalog#': next((l['catno'] for l in labels if l.get('catno')), ''),
             'Artist': ', '.join(a.get('name', '') for a in r.get('artists') or []) or r.get('artists_sort', ''),
             'Title': r.get('title', ''), 'Label': ', '.join(dict.fromkeys(l.get('name', '') for l in labels)),
-            'Format': _format(r), 'Released': r.get('year') or '', 'release_id': r.get('id', '')}
+            'Format': _format(r), 'Released': r.get('year') or '', 'release_id': r.get('id', ''),
+            'master_id': r.get('master_id') or '', 'Genres': json.dumps(r.get('genres') or []),
+            'Styles': json.dumps(r.get('styles') or [])}
     vals.update(extra)
     return [str(vals.get(c, '')) for c in header]
 
@@ -76,12 +82,19 @@ def _write(path, rows):
 
 def _add_row(path, r, extra, tail=()):
     rows = _read(path)
+    if tail and 'Date Added' in rows[0]:
+        extra = dict(extra, **{'Date Added': tail[0]}); tail = tail[1:]
     rows.append(_row(r, rows[0], extra) + list(tail))
     _write(path, rows)
 
-def _drop_rows(path, rid, only_last=False):
+def _drop_rows(path, rid, only_last=False, instance_id=None):
     rows = _read(path); i = rows[0].index('release_id')
     hit = [n for n, row in enumerate(rows) if n and len(row) > i and row[i] == str(rid)]
+    if instance_id is not None and 'instance_id' in rows[0]:
+        j = rows[0].index('instance_id')
+        exact = [n for n in hit if len(rows[n]) > j and rows[n][j] == str(instance_id)]
+        # Rows imported before instance tracking still use the legacy last-copy rule.
+        hit = exact or [n for n in hit if len(rows[n]) <= j or not rows[n][j]]
     if only_last: hit = hit[-1:]
     if hit: _write(path, [row for n, row in enumerate(rows) if n not in hit])
 
@@ -94,27 +107,31 @@ def _local(fn, *a):
 
 def buy(rid):
     """Adds release rid to collection folder 1 (Uncategorized). Returns {'folder_id': 1, 'instance_id': int}."""
-    if DRY: return {'folder_id': 1, 'instance_id': random.randint(10**8, 10**9)}
-    d = _call('POST', '/users/%s/collection/folders/1/releases/%s' % (_user(), int(rid)))
-    if not d.get('instance_id'): raise DiscogsError('Discogs did not confirm the purchase')
-    _local(_add_row, COLLECTION_CSV, _release(rid), {'CollectionFolder': 'Uncategorized', 'Date Added': _now()})
-    return {'folder_id': 1, 'instance_id': d['instance_id']}
+    with DATA_LOCK:
+        if DRY: return {'folder_id': 1, 'instance_id': random.randint(10**8, 10**9)}
+        d = _call('POST', '/users/%s/collection/folders/1/releases/%s' % (_user(), int(rid)))
+        if not d.get('instance_id'): raise DiscogsError('Discogs did not confirm the purchase')
+        _local(_add_row, COLLECTION_CSV, _release(rid), {'CollectionFolder': 'Uncategorized', 'Date Added': _now(), 'instance_id': d['instance_id'], 'folder_id': 1})
+        return {'folder_id': 1, 'instance_id': d['instance_id']}
 
 def unbuy(rid, folder_id, instance_id):
     """Removes that collection instance again."""
-    if DRY: return
-    _call('DELETE', '/users/%s/collection/folders/%s/releases/%s/instances/%s' % (_user(), int(folder_id), int(rid), int(instance_id)))
-    _local(_drop_rows, COLLECTION_CSV, rid, True)
+    with DATA_LOCK:
+        if DRY: return
+        _call('DELETE', '/users/%s/collection/folders/%s/releases/%s/instances/%s' % (_user(), int(folder_id), int(rid), int(instance_id)))
+        _local(_drop_rows, COLLECTION_CSV, rid, True, instance_id)
 
 def want(rid):
     """Adds release rid to the wantlist. Returns {}."""
-    if DRY: return {}
-    _call('PUT', '/users/%s/wants/%s' % (_user(), int(rid)))
-    _local(_add_row, WANTLIST_CSV, _release(rid), {}, [_now()])
-    return {}
+    with DATA_LOCK:
+        if DRY: return {}
+        _call('PUT', '/users/%s/wants/%s' % (_user(), int(rid)))
+        _local(_add_row, WANTLIST_CSV, _release(rid), {}, [_now()])
+        return {}
 
 def unwant(rid):
     """Removes release rid from the wantlist."""
-    if DRY: return
-    _call('DELETE', '/users/%s/wants/%s' % (_user(), int(rid)))
-    _local(_drop_rows, WANTLIST_CSV, rid)
+    with DATA_LOCK:
+        if DRY: return
+        _call('DELETE', '/users/%s/wants/%s' % (_user(), int(rid)))
+        _local(_drop_rows, WANTLIST_CSV, rid)

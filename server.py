@@ -8,29 +8,53 @@ Discogs; if that fails, the copy saved by fetch_discogs.sh is used and the card 
 """
 import csv, datetime, hashlib, json, os, re, socket, sys, tempfile, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-import engine, library, harness, build_compact, discogs_write
+import engine, library, harness, build_compact, discogs_write, discogs_sync
 import styles as ST
 
 PORT = int(os.environ.get('CD_PORT', 8000))
 HOST = os.environ.get('CD_HOST', '127.0.0.1')   # only tailscale serve should reach it
 UA = 'CrateDiggerPrototype/0.1 (personal collection)'
 TOKEN = open('discogs_token.txt').read().strip() if os.path.exists('discogs_token.txt') else os.environ.get('DISCOGS_TOKEN', '')
+SNAPSHOT_LOCK = threading.Lock()
 
 # ----------------------------------------------------------------------------
 # Snapshots, loaded once at start and again on Refresh
+def cached_release(row):
+    """Enough of a synced CSV row to retain ownership while full details are unavailable."""
+    def number(key):
+        try: return int(row.get(key) or 0) or None
+        except ValueError: return None
+    def names(key):
+        try:
+            values = json.loads(row.get(key) or '[]')
+            return values if isinstance(values, list) and all(isinstance(v, str) for v in values) else []
+        except ValueError: return []
+    fmt = [f.strip() for f in (row.get('Format') or '').split(',') if f.strip()]
+    qty, name = re.fullmatch(r'(?:(\d+)x)?(.*)', fmt[0] if fmt else '?').groups()
+    return compact({'id': int(row['release_id']), 'title': row.get('Title') or '', 'year': number('Released'),
+                    'master_id': number('master_id'), 'artists_sort': row.get('Artist') or '',
+                    'genres': names('Genres'), 'styles': names('Styles'),
+                    'formats': [{'name': name, 'qty': qty or '1', 'descriptions': fmt[1:]}],
+                    'community': {'have': None, 'want': None}, 'uri': 'https://www.discogs.com/release/' + row['release_id']})
+
 def load():
     global D, SHELF, SHELF_IDS, WANT_IDS, LIB, H
-    d = json.load(open('data/compact.json'))
+    d = json.load(open('data/compact.json')) if os.path.exists('data/compact.json') else {'releases': {}, 'masters': {}}
     col = list(csv.DictReader(open('data/collection.csv', encoding='utf-8-sig')))
-    missing = [r['release_id'] for r in col if r['release_id'] not in d['releases']]
-    if missing: print('no saved details for shelf releases %s; run fetch_discogs.sh' % ', '.join(missing))
-    shelf_recs = [engine.Rec(d['releases'][r['release_id']], d['masters'], 'shelf', r) for r in col if r['release_id'] in d['releases']]
-    want_ids = {int(r['release_id']) for r in csv.DictReader(open('data/wantlist.csv', encoding='utf-8-sig')) if r.get('release_id')}
+    want_rows = list(csv.DictReader(open('data/wantlist.csv', encoding='utf-8-sig')))
+    for row in col + want_rows:
+        if row.get('release_id') and row['release_id'] not in d['releases']:
+            d['releases'][row['release_id']] = cached_release(row)
+    shelf_recs = [engine.Rec(d['releases'][r['release_id']], d['masters'], 'shelf', r) for r in col if r.get('release_id')]
+    want_ids = {int(r['release_id']) for r in want_rows if r.get('release_id')}
     lib_albums = library.load('data/Library.xml')
-    shelf, want, lib, recs = harness.load_snapshots()   # the harness's own shape; its shelf is the fixed test snapshot
     live = {str(t.id): engine.describe(t) for t in shelf_recs}
-    h = ({'S' + k: r for k, r in live.items()}, want, lib, {**recs, **live})
-    D, SHELF, SHELF_IDS, WANT_IDS, LIB, H = d, shelf_recs, {t.id for t in shelf_recs}, want_ids, lib_albums, h   # published together
+    recs = {rid: engine.describe(engine.Rec(r, d['masters'], 'inspected', None)) for rid, r in d['releases'].items()}
+    recs.update(live)
+    h = ({'S' + k: r for k, r in live.items()}, {i: recs[str(i)] for i in want_ids},
+         {'L' + a['k']: a for a in lib_albums}, recs)
+    with SNAPSHOT_LOCK:
+        D, SHELF, SHELF_IDS, WANT_IDS, LIB, H = d, shelf_recs, {t.id for t in shelf_recs}, want_ids, lib_albums, h
     print('snapshots: %d shelf records, %d library albums' % (len(SHELF), len(LIB)), flush=True)
 
 def fetch_new():
@@ -38,7 +62,8 @@ def fetch_new():
     No Apple lookup: previews are fetched live, only for the record being inspected (samples()).
     Returns (added ids, failures); a failed record is tried again on the next Refresh."""
     ids = [r['release_id'] for r in csv.DictReader(open('data/collection.csv', encoding='utf-8-sig'))]
-    ids += [r[7] for r in list(csv.reader(open('data/wantlist.csv', encoding='utf-8-sig')))[1:]]
+    ids += [r.get('release_id', '') for r in csv.DictReader(open('data/wantlist.csv', encoding='utf-8-sig'))]
+    for folder in ('data/releases', 'data/masters', 'data/itunes'): os.makedirs(folder, exist_ok=True)
     new = [i for i in dict.fromkeys(ids) if i and not os.path.exists('data/releases/%s.json' % i)]
     def save(p, d):
         with open(p, 'w', encoding='utf-8') as f: json.dump(d, f, ensure_ascii=False)
@@ -70,12 +95,32 @@ def newer_than_compact():
     except OSError: return True
     return any(os.path.getmtime(os.path.join(d, f)) > t for d in ('data/releases', 'data/masters') for f in os.listdir(d) if f.endswith('.json'))
 
-def refresh():
-    with REFRESH_LOCK:
-        added, failed = fetch_new()
-        if added or newer_than_compact(): build_compact.write(build_compact.build(compact))
+def refresh(sync=True):
+    with REFRESH_LOCK, discogs_write.DATA_LOCK:
+        synced, sync_error = None, None
+        if sync:
+            try: synced = discogs_sync.sync()
+            except discogs_write.DiscogsError as e: sync_error = str(e)
+            except Exception: sync_error = 'Could not sync Discogs; cached lists were kept.'
+        added, failed = ([], []) if sync_error else fetch_new()
+        if not sync_error and (added or newer_than_compact()): build_compact.write(build_compact.build(compact))
         load()
-        return {'shelf': len(SHELF), 'library': len(LIB), 'added': len(added), 'failed': failed}
+        return {'shelf': len(SHELF), 'wantlist': len(WANT_IDS), 'library': len(LIB), 'added': len(added), 'failed': failed,
+                'sync': synced or discogs_sync.status(), 'sync_error': sync_error}
+
+def startup():
+    def update():
+        result = refresh()
+        if result['sync_error']: print('Discogs sync unavailable; using cached lists: ' + result['sync_error'], file=sys.stderr)
+        return result
+    try: load()
+    except (OSError, ValueError, KeyError):
+        # Initial setup needs an account cache before the app can answer ownership questions.
+        return update()
+    def background():
+        try: update()
+        except Exception: print('Startup refresh failed; using cached lists. Refresh again to retry.', file=sys.stderr)
+    threading.Thread(target=background, name='discogs-startup-sync', daemon=True).start()
 
 # ----------------------------------------------------------------------------
 # Outside services
@@ -129,21 +174,23 @@ def search(q):
     """Editions matching a barcode, catalogue number or artist/title."""
     kind, text = next(((k, q[k][0]) for k in ('barcode', 'catno', 'q') if q.get(k)), (None, ''))
     if not kind: return {'results': []}
+    with SNAPSHOT_LOCK: shelf_ids = SHELF_IDS
     try:
         if not TOKEN: raise RuntimeError('no Discogs token')
         d = get('https://api.discogs.com/database/search?' + urllib.parse.urlencode(
             {kind: text, 'type': 'release', 'per_page': 50}), True)
         rows = [{'id': r['id'], 'title': r['title'], 'year': r.get('year'), 'country': r.get('country'),
                  'format': ', '.join(r.get('format', [])), 'label': (r.get('label') or [''])[0], 'catno': r.get('catno'),
-                 'thumb': r.get('thumb'), 'owned': r['id'] in SHELF_IDS} for r in d['results']]
+                 'thumb': r.get('thumb'), 'owned': r['id'] in shelf_ids} for r in d['results']]
         return {'results': rows, 'source': 'discogs'}
     except Exception as e:
         return {'results': local_search(kind, text), 'source': 'local', 'note': 'Discogs search failed (%s); showing your shelf and wantlist only' % e}
 
 def local_search(kind, text):
+    with SNAPSHOT_LOCK: data, shelf_ids = D, SHELF_IDS
     n = lambda s: re.sub(r'[^a-z0-9]', '', (s or '').lower())
     want = n(text); out = []
-    for rid, r in D['releases'].items():
+    for rid, r in data['releases'].items():
         lab = r['labels'][0] if r['labels'] else [0, '', '', '']
         if kind == 'barcode': hit = any(n(b) == want for b in r['barcodes'])
         elif kind == 'catno': hit = any(n(l[2]) == want for l in r['labels'])
@@ -152,19 +199,26 @@ def local_search(kind, text):
             k, _, q = engine.fmt_of(r)
             out.append({'id': r['id'], 'title': '%s - %s' % (engine.clean_name(r['artists_sort']), r['title']), 'year': r['year'],
                         'country': r['country'], 'format': ', '.join([f['name'] for f in r['formats']] + r['formats'][0]['d'] if r['formats'] else []),
-                        'label': engine.clean_name(lab[1]), 'catno': lab[2], 'thumb': None, 'owned': r['id'] in SHELF_IDS})
+                        'label': engine.clean_name(lab[1]), 'catno': lab[2], 'thumb': None, 'owned': r['id'] in shelf_ids})
     return out[:50]
 
 def release(rid):
-    raw, m, live = fetch_release(rid)
-    rel = compact(raw)
-    masters = {str(rel['master_id']): {'year': m.get('year'), 'styles': m.get('styles', [])}} if m else {}
-    t = engine.Rec(rel, masters, 'shelf' if rid in SHELF_IDS else 'inspected', None)
-    lf = engine.library_facts(t, LIB, library.find_album, library.by_artist)
-    res = engine.match(t, [o for o in SHELF if o.id != rid] + ([next(o for o in SHELF if o.id == rid)] if rid in SHELF_IDS else []), lf)
+    with SNAPSHOT_LOCK: data, shelf, shelf_ids, want_ids, lib = globals().get('D', {}), SHELF, SHELF_IDS, WANT_IDS, LIB
+    try:
+        raw, m, live = fetch_release(rid)
+        rel = compact(raw)
+        masters = {str(rel['master_id']): {'year': m.get('year'), 'styles': m.get('styles', [])}} if m else {}
+    except Exception:
+        # A synced list can know ownership before the detailed release endpoint is available.
+        rel = data.get('releases', {}).get(str(rid))
+        if rel is None: raise
+        raw, live, masters = {}, False, data.get('masters', {})
+    t = engine.Rec(rel, masters, 'shelf' if rid in shelf_ids else 'inspected', None)
+    lf = engine.library_facts(t, lib, library.find_album, library.by_artist)
+    res = engine.match(t, [o for o in shelf if o.id != rid] + ([next(o for o in shelf if o.id == rid)] if rid in shelf_ids else []), lf)
     own = res['own']
     if own:
-        o = next(x for x in SHELF if x.id == own['rec'])
+        o = next(x for x in shelf if x.id == own['rec'])
         own = {'kind': own['kind'], 'format': o.kind, 'year': o.year, 'country': o.rel['country'],
                'label': next(iter(o.labels.values()), ''), 'reissue': o.reissue}
     elif lf['album']:
@@ -177,9 +231,9 @@ def release(rid):
             'image': (raw.get('images') or [{}])[0].get('uri') or raw.get('thumb'),
             'style': t.family, 'own': own, 'facts': res['facts'], 'territory': res['territory'], 'why': res['why'],
             'market': {'low': rel['lowest_price'], 'have': rel['have'], 'want': rel['want'], 'for_sale': rel['num_for_sale']},
-            'videos': rel['videos'][:3], 'uri': rel['uri'], 'tracks': rel['tracks'], 'links': engine.shelf_links(t, SHELF),
+            'videos': rel['videos'][:3], 'uri': rel['uri'], 'tracks': rel['tracks'], 'links': engine.shelf_links(t, shelf),
             'decision': next((e for e in reversed(decisions()) if e['release_id'] == rid and e['undone'] is None), None),
-            'wanted': rid in WANT_IDS}
+            'wanted': rid in want_ids}
 
 def samples(rid):
     raw, m, live = fetch_release(rid)
@@ -254,7 +308,7 @@ def record_decision(rid, body):
             print('history not saved (%s: %s); entry: %s' % (type(e).__name__, e, json.dumps(entry)), file=sys.stderr)
             raise HistoryError('Discogs was updated, but the history could not be saved; do not retry. Details are in the server log.') from None
     if action in ('buy', 'wishlist'):
-        try: refresh()
+        try: refresh(sync=False)
         except Exception as e: print('refresh after %s failed: %s' % (action, e), file=sys.stderr)
     return entry
 
@@ -275,7 +329,7 @@ def undo_decision(entry_id):
             print('history not saved after undo (%s: %s); entry: %s' % (type(e).__name__, e, json.dumps(entry)), file=sys.stderr)
             raise HistoryError('Discogs was updated, but the history could not be saved. Details are in the server log.') from None
     if entry['action'] in ('buy', 'wishlist'):
-        try: refresh()
+        try: refresh(sync=False)
         except Exception as e: print('refresh after undo %s failed: %s' % (entry['action'], e), file=sys.stderr)
     return entry
 
@@ -365,6 +419,6 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *a): sys.stderr.write('%s\n' % (fmt % a))
 
 if __name__ == '__main__':
-    load()
+    startup()
     print('open http://%s:%d on your iPhone (same Wi-Fi), or http://localhost:%d here' % (socket.gethostname(), PORT, PORT))
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()

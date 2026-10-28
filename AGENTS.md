@@ -31,7 +31,9 @@ Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.con
 ## Data
 
 - `data/` is git-ignored except `eval_set.json` and `review*.json`. Your exports (`collection.csv`, `Library.xml`), Discogs downloads (`releases/`, `masters/`, `compact.json`), runs and saved answers stay local.
-- Refresh in the app downloads Discogs details for new shelf and wantlist records, rebuilds `compact.json` (`build_compact.py`) and reloads. Apple previews are looked up live, only for the record being inspected.
+- Refresh in the app and server startup download the current Discogs collection (all folders) and wantlist with the existing personal token. Both complete lists are saved to the local CSV caches before missing record details are downloaded, `compact.json` rebuilt and snapshots reloaded. A failed account sync keeps the previous caches and reports the error. `data/discogs-sync.json` records the last successful account sync.
+- `discogs_write.DATA_LOCK` serializes account sync and Buy/Wishlist/Undo with their local cache updates. After an account action the server reloads locally without downloading the lists again. Collection cache rows retain `instance_id` so Undo removes the correct copy after a sync.
+- `data/Library.xml` remains a manual Apple Music export; Refresh reloads it but does not sync the Apple account. Apple previews are looked up live, only for the record being inspected.
 - The app's shelf list for the model is built from the current `collection.csv`. The harness uses the fixed snapshot `data/results.json` so runs stay comparable.
 - Answers are saved in `data/recommendations.json`, keyed by a hash of model, prompt, lists and record; any change to these asks the model again.
 
