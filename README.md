@@ -8,6 +8,14 @@ A personal web app for deciding on a record while standing at a shop's crate. Sc
 - where it sits among your labels and musicians, 30-second samples, and the lowest Discogs price;
 - **Buy**, **Explore later** and **Wishlist**, which write to your Discogs account and can be undone.
 
+<p>
+  <img src="crate-digger-shots/01-home.png" width="260" alt="Home: scan a barcode or search by catalogue number or artist and title">
+  <img src="crate-digger-shots/03-card-top.png" width="260" alt="Record card: ownership, main style, connections and the closest records in the collection">
+  <img src="crate-digger-shots/06-nothing-close.png" width="260" alt="A record with nothing close in the collection, answered honestly">
+</p>
+
+More screens: [edition picker](crate-digger-shots/02-editions.png), [full record card](crate-digger-shots/04-card-full.png), [closest picks with reasons](crate-digger-shots/05-card-picks.png), [Explore Later list](crate-digger-shots/07-explore-later.png).
+
 It is a working prototype that I use in record shops. The aim was to answer one question: does trustworthy evidence from your own collection help you decide faster? Live use says yes: a decision takes about 30 seconds from the card appearing.
 
 > This is a single-user tool built around my own Discogs account and Apple Music library. It is published to show the product thinking, the evaluation and the engineering process, not as a hosted service.
@@ -101,6 +109,7 @@ I wrote the product requirements, made the product decisions and labelled the ev
 | `scripts/` | Report, grading and replays, deploy, status, task and worker setup |
 | `tests/` | Python and page tests; `tests/page-harness.cjs` runs the page against a fake backend |
 | `docs/` | Status, decisions, archived task briefs, replay results |
+| `crate-digger-shots/` | Screenshots of the live app at iPhone size |
 | `data/` | Only the evaluation labels and reviews are tracked; personal exports, downloads and caches stay local |
 
 ## Running it
