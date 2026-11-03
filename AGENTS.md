@@ -24,6 +24,7 @@ Harness (costs money, about US$0.10–0.14 per 20-record run): `set -a; . ~/.con
 
 - `server.py` is the backend and serves `static/index.html`. It runs as the systemd user service `crate-digger` on the Linux laptop (omarchy), from this folder, on 127.0.0.1:8000. `tailscale serve` makes it reachable over the tailnet only.
 - Never bind it publicly and never enable Tailscale Funnel: the app has no login.
+- omarchy cannot open connections to the Mac, iPhone or home network. Do not add tailnet rules, exit nodes or Wi-Fi changes that undo this. After a Tailscale re-login or `--reset`, rerun `tailscale serve --bg 8000`; the reset wipes it.
 - Page changes take effect on reload; Python changes need `make deploy`. Logs: `journalctl --user -u crate-digger -f`.
 - Keys: the OpenRouter key is in `~/.config/crate-digger/env` (mode 600, loaded only by the service); the Discogs token is in `discogs_token.txt` (600, git-ignored). Never print, commit or send them to the browser.
 - Model calls go through OpenRouter (`check_models.py`): primary `openai/gpt-5.6-luna`, fallback `anthropic/claude-haiku-5.5`, routed only to providers that honour the JSON schema and keep no data. The app calls only the primary.
